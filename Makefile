@@ -2,12 +2,15 @@ CFLAGS := -Wall -ansi -pedantic
 
 .PHONY: clean
 
-assembler: assembler.o
+assembler: assembler.o instruction_set.o
 	$(CC) -o $@ $^
 
 
 assembler.o: assembler.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+instruction_set.o: instruction_set.c
+	$(CC) $(CFLAGS) -c $^ -o $@
 
 clean:
 	-rm -rf assembler *.o
