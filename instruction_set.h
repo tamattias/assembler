@@ -1,5 +1,5 @@
-#ifndef INSTABLE_H
-#define INSTABLE_H
+#ifndef INSTURCTIONSET_H
+#define INSTURCTIONSET_H
 
 #define INSTRUCTION_OPCODE(inst) ((inst) & 0xFFFF) 
 #define INSTRUCTION_FUNCT(inst)  ((inst) >> 16)
