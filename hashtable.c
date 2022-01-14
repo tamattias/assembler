@@ -19,7 +19,6 @@ typedef struct bucketnode {
 struct hashtable {
     hashtable_free_item_func_t free_item;
     int capacity;
-    int count;
     bucketnode_t **buckets;
 };
 
@@ -49,7 +48,6 @@ hashtable_t *hashtable_alloc(int capacity, hashtable_free_item_func_t free_item)
     hashtable_t *ht = (hashtable_t*)malloc(sizeof(hashtable_t));
     ht->free_item = free_item;
     ht->capacity = capacity;
-    ht->count = 0;
     ht->buckets = calloc(capacity, sizeof(ht->buckets[0]));
     return ht;
 }
