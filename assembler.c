@@ -1,3 +1,9 @@
+/**
+ * @file assembler.c
+ * @author Tamir Attias
+ * @brief Assembler entry point.
+ */
+
 #include "preprocessor.h"
 
 #include <stdio.h>
@@ -11,8 +17,8 @@ void print_usage()
 int main(int argc, char *argv[])
 {
     char *basename;
-    char infilename[FILENAME_MAX+1];
-    char outfilename[FILENAME_MAX+1];
+    char infilename[FILENAME_MAX +  1];
+    char outfilename[FILENAME_MAX + 1];
 
     if (argc < 2) {
         print_usage();

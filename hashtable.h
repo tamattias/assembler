@@ -1,3 +1,9 @@
+/**
+ * @file hashtable.h
+ * @author Tamir Attias
+ * @brief Hash table declarations.
+ */
+
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 

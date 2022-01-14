@@ -1,3 +1,9 @@
+/**
+ * @file dynstr.h
+ * @author Tamir Attias
+ * @brief Dynamic string declarations.
+ */
+
 #ifndef DYNSTRING_H
 #define DYNSTRING_H
 

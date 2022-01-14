@@ -1,3 +1,9 @@
+/**
+ * @file dynstr.c
+ * @author Tamir Attias
+ * @brief Dynamic string implementation.
+ */
+
 #include "dynstr.h"
 
 #include <stdlib.h>

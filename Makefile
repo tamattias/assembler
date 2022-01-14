@@ -14,7 +14,7 @@ dynstr.o: dynstr.c dynstr.h
 hashtable.o: hashtable.c hashtable.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-preprocessor.o: preprocessor.c preprocessor.h
+preprocessor.o: preprocessor.c preprocessor.h dynstr.h hashtable.h constants.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 instruction_set.o: instruction_set.c instruction_set.h

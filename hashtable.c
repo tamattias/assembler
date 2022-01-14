@@ -1,3 +1,9 @@
+/**
+ * @file hashtable.c
+ * @author Tamir Attias
+ * @brief Hash table implementation.
+ */
+
 #include "hashtable.h"
 
 #include <stdlib.h>
