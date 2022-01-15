@@ -26,7 +26,7 @@ dynstr_t *dynstr_alloc(int capacity)
     return str;
 }
 
-dynstr_t *dynstr_alloc_from_string(char *init_str)
+dynstr_t *dynstr_alloc_from_string(const char *init_str)
 {
     dynstr_t *str;
     str = (dynstr_t*)malloc(sizeof(dynstr_t));
@@ -43,17 +43,17 @@ void dynstr_free(dynstr_t *str)
     free(str);
 }
 
-int dynstr_size(dynstr_t *str)
+int dynstr_size(const dynstr_t *str)
 {
     return str->size;
 }
 
-const char *dynstr_pointer(dynstr_t *str)
+const char *dynstr_pointer(const dynstr_t *str)
 {
     return str->buf;
 }
 
-void dynstr_append(dynstr_t *str, char *suffix)
+void dynstr_append(dynstr_t *str, const char *suffix)
 {
     int suffix_len;
     int new_len;
