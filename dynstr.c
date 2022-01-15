@@ -57,7 +57,6 @@ void dynstr_append(dynstr_t *str, char *suffix)
 {
     int suffix_len;
     int new_len;
-    char *new_buf;
 
     suffix_len = strlen(suffix);
     new_len = str->size + suffix_len;
@@ -67,15 +66,8 @@ void dynstr_append(dynstr_t *str, char *suffix)
         /* Double capacity. */
         str->capacity *= 2;
 
-        /* Allocate new buffer and copy the old string. */
-        new_buf = (char*)malloc(str->capacity + 1);
-        memcpy(new_buf, str->buf, str->size);
-
-        /* Free old buffer. */
-        free(str->buf);
-        
-        /* Set new buffer as as current buffer. */
-        str->buf = new_buf;
+        /* Expand the string. */
+        str->buf = realloc(str->buf, str->capacity + 1);
     }
 
     /* Append suffix at end of string and update size. */
