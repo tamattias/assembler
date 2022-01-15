@@ -8,7 +8,7 @@
 #define CONSTANTS_H
 
 /**
- * Maximum wide length for all source files, in characters.
+ * Maximum line length for all source files, in characters.
  */
 #define MAX_LINE_LENGTH 80
 
