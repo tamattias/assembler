@@ -43,7 +43,6 @@ static int read_field(char **line, char *field)
     --(*line);
     
     /* Copy first field until space or end of line. */
-    /* TODO: Limit max length. */
     while ((c = *(*line)++) != '\0' && !isspace(c))
         *field++ = c;
 
