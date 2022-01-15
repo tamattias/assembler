@@ -34,12 +34,10 @@ static char *dupstr(const char *str)
 
 static int hash(const char *key)
 {
-    /* TODO: Better hash algorithm. */
     char c;
-    int hash = 0;
-    while ((c = *key++) != '\0') {
-        hash += c;
-    }
+    int hash = 7;
+    while ((c = *key++) != '\0')
+        hash = hash * 31 + c;
     return hash;
 }
 
