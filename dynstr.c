@@ -61,7 +61,7 @@ void dynstr_append(dynstr_t *str, const char *suffix)
     suffix_len = strlen(suffix);
     new_len = str->size + suffix_len;
 
-    /* Check if we would overflow the bufefr. */
+    /* Check if we would overflow the buffer. */
     if (new_len > str->capacity) {
         /* Double capacity. */
         str->capacity *= 2;
