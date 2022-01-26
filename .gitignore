@@ -1,4 +1,6 @@
+.vscode/
 assembler
+*.d
 *.o
 *.am
 *.ob

@@ -35,10 +35,15 @@ int main(int argc, char *argv[])
     strcpy(outfilename, basename);
     strcat(outfilename, ".am");
 
-    /* Preprocess */
+    /* Preprocess. */
     if (preprocess(infilename, outfilename)) {
         printf("error: could not preprocess source file.\n");
         return 1;
+    }
+
+    /* Run first pass. */
+    if (firstpass(outfilename)) {
+
     }
 
     return 0;

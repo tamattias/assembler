@@ -1,27 +1,23 @@
 CFLAGS := -Wall -ansi -pedantic -g
+SRCS := $(wildcard *.c)
+DEPS := $(patsubst %.c, %.d, $(SRCS))
+OBJS := $(patsubst %.c, %.o, $(SRCS))
+
+include $(SRCS:.c=.d)
 
 .PHONY: clean
 
-assembler: assembler.o dynstr.o hashtable.o preprocessor.o instruction_set.o
-	$(CC) -o $@ $^
+assembler: $(OBJS)
+	$(CC) -o $@ $(OBJS)
 
-assembler.o: assembler.c
+%.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-dynstr.o: dynstr.c dynstr.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-hashtable.o: hashtable.c hashtable.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-preprocessor.o: preprocessor.c preprocessor.h dynstr.h hashtable.h constants.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-instruction_set.o: instruction_set.c instruction_set.h
-	$(CC) $(CFLAGS) -c $< -o $@
+%.d: %.c
+	@set -e; rm -f $@; \
+	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
 
 clean:
-	-rm -rf assembler *.o
-
-
-
+	-rm -rf assembler *.o *.d

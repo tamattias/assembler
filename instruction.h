@@ -1,5 +1,5 @@
-#ifndef INSTURCTIONSET_H
-#define INSTURCTIONSET_H
+#ifndef INSTRUCTION_H
+#define INSTRUCTION_H
 
 #define INSTRUCTION_OPCODE(inst) ((inst) & 0xFFFF) 
 #define INSTRUCTION_FUNCT(inst)  ((inst) >> 16)
@@ -7,6 +7,6 @@
 
 typedef int instruction_t;
 
-instruction_t is_find(const char *name);
+instruction_t find_instruction(const char *name);
 
 #endif

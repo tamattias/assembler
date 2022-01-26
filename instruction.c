@@ -1,4 +1,4 @@
-#include "instruction_set.h"
+#include "instruction.h"
 
 #include <string.h>
 
@@ -26,7 +26,7 @@ static instruction_desc_t descs[] = {
     {"stop", MAKE_INSTRUCTION(15, 0)},
 };
 
-instruction_t is_find(const char *name)
+instruction_t find_instruction(const char *name)
 {
     int i;
     for (i = 0; i < sizeof(descs)/sizeof(descs[0]); ++i) {
