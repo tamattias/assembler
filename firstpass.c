@@ -13,6 +13,7 @@ int firstpass(const char *infilename, const char *outfilename)
 {
     FILE *in, *out;
     char line[MAX_LINE_LENGTH + 1];
+    int ic = 100, dc = 0;
 
     in = fopen(infilename, "r");
     if (!in) {
@@ -27,10 +28,8 @@ int firstpass(const char *infilename, const char *outfilename)
         return 1;
     }
 
-    
-
     while (fgets(line, sizeof(line), in)) {
-
+        
     }
 
     fclose(in);

@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "hashtable.h"
 #include "dynstr.h"
+#include "ioutil.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -19,39 +20,6 @@
 
 /* Number of buckets in macro hash table. */
 #define MACRO_TABLE_BUCKET_COUNT 1024
-
-/* Checks whether a character terminates a line buffer
-   i.e., if it is a newline or null terminator. */
-static int is_eol(char c)
-{
-    return c == '\0' || c == '\n';
-}
-
-/* Returns 1 if end of line and 0 otherwise. */
-static int read_field(char **line, char *field)
-{
-    char c;
-
-    /* Skip whitespace */
-    while ((c = *(*line)++) != '\0' && isspace(c))
-        ;
-
-    if (is_eol(c))
-        return 0;
-
-    /* Unread whitespace. */
-    --(*line);
-    
-    /* Copy first field until space or end of line. */
-    while ((c = *(*line)++) != '\0' && !isspace(c))
-        *field++ = c;
-
-    /* Add null terminator. */
-    field[0] = 0;
-
-    /* If end of line, return 0 else return line pointer. */
-    return is_eol(c);
-}
 
 /* Callback for deallocating a macro buffer stored in a hash table. */
 static void free_macro(void *macro)
