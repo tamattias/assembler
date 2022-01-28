@@ -129,7 +129,7 @@ static int process_label_field(firstpass_t *fp)
 
  * @return Non-zero if end of line, else zero.
  */
-static int next_field(firstpass_t *fp)
+static int get_next_field(firstpass_t *fp)
 {
     read_field(&fp->line_head, fp->field, &fp->field_len);
     return is_eol(*fp->line_head);
@@ -248,7 +248,7 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
     fp->line_head = line;
 
     /* First field. */
-    if (next_field(fp) != 0)
+    if (get_next_field(fp) != 0)
         return 0; /* Skip empty line. */
 
     /* Handle comment lines. */
@@ -265,7 +265,7 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
         fp->labeled = 1;
 
         /* Next field. */
-        if (next_field(fp) != 0)
+        if (get_next_field(fp) != 0)
             return 0;
     } else {
         /* Not labeled. */
