@@ -24,7 +24,7 @@ typedef struct {
     int line_no; /** Current line number. */
     char *line_head; /** Line head. */
     int eol; /** End of line reached? */
-    char field[MAX_LINE_LENGTH + 1]; /* Current field. */
+    char field[MAX_LINE_LENGTH + 1]; /** Current field. */
     int field_len; /** Length of current field. */
     int labeled; /** Is current line a label line? */
     char label[MAX_LABEL_LENGTH + 1]; /** Current label. */
