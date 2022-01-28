@@ -9,11 +9,13 @@
 #include "ioutil.h"
 #include "shared.h"
 #include "instruction.h"
+#include "symtable.h"
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 /* TODO: Handle cases of memory image overflow (data/instruction). */
 
@@ -88,9 +90,9 @@ static int read_comma_separated_data(const char *input, word_t *data, int limit)
     return count;
 }
 
-static int process_label_field(firstpass_t *fp)
+static int process_label_field(firstpass_t *fp, shared_t *shared)
 {
-    int bad; /* Label badly formatted? */
+    int bad = 0; /* Label badly formatted? */
     const char *head = fp->field;
 
     while ((fp->label[fp->label_len++] = *head++) != ':') {
@@ -119,7 +121,10 @@ static int process_label_field(firstpass_t *fp)
         return 1;
     }
 
-    /* TODO: Check if symbol already defined in symbol table. */
+    if (symtable_find(shared->symtable, fp->label)) {
+        report_error(fp, "label %s already defined; ignoring statement.", fp->label);
+        return 1;
+    }
 
     return 0;
 }
@@ -138,13 +143,14 @@ static int get_next_field(firstpass_t *fp)
 /**
  * Process data after a .data directive.
  */
-static void process_data_directive(firstpass_t *fp, shared_t *shared)
+static int process_data_directive(firstpass_t *fp, shared_t *shared)
 {
     int data_len; /* Number of words read. */
+    symbol_t *sym; /* Symbol. */
 
     if (fp->eol) {
         report_error(fp, "missing data after data directive.");
-        return;
+        return 1;
     }
     
     /* Read comma separated integer values into data image. */
@@ -156,30 +162,41 @@ static void process_data_directive(firstpass_t *fp, shared_t *shared)
     /* Check if bad data. */
     if (data_len == -1) {
         report_error(fp, "invalid data after data directive.");
-        return;
+        return 1;
     }
 
     /* Check if empty data. */
     if (data_len == 0) {
         report_error(fp, "no data after data directive.");
-        return;
+        return 1;
+    }
+
+    /* Add symbol if labeled. */
+    if (fp->labeled) {
+        sym = symtable_new(shared->symtable, fp->label);
+        assert(sym);
+        sym->data = 1;
+        sym->base_addr = SYMBOL_BASE_ADDR(fp->dc);
+        sym->offset = SYMBOL_OFFSET(fp->dc);
     }
 
     /* Increment data counter. */
     fp->dc += data_len;
+
+    return 0;
 }
 
 /**
  * Process data after a .string directive.
  */
-static void process_string_directive(firstpass_t *fp, shared_t *shared)
+static int process_string_directive(firstpass_t *fp, shared_t *shared)
 {
     char c; /* Last read string directive character. */
-    int len; /* Number of characters in buf. */
+    int len; /* Number of characters read. */
 
     if (fp->eol) {
         report_error(fp, "missing string data after string directive.");
-        return;
+        return 1;
     }
 
     /* Skip whitespace. */
@@ -189,7 +206,7 @@ static void process_string_directive(firstpass_t *fp, shared_t *shared)
     /* If last character was end of line then no data is present. */
     if (is_eol(c)) {
         report_error(fp, "missing string data after string directive.");
-        return;
+        return 1;
     }
 
     /* Unread last character. */
@@ -198,19 +215,20 @@ static void process_string_directive(firstpass_t *fp, shared_t *shared)
     /* String needs to begin with double quotes. */
     if (*fp->line_head++ != '"') {
         report_error(fp, "string data missing opening double quotes.");
-        return;
+        return 1;
     }
 
     len = 0;
 
-    /* Copy string into data buffer. */
+    /* Copy string into data image, incrementing the data counter for
+       every character (word) written. */
     while ((c = *fp->line_head++) != '\0' && c != '"')
         shared->data_image[fp->dc++] = c;
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
         report_error(fp, "string data missing closing quotes.");
-        return;
+        return 1;
     }
 
     /* Append null terminator. */
@@ -218,6 +236,8 @@ static void process_string_directive(firstpass_t *fp, shared_t *shared)
 
     /* Increment data counter by string length plus null terminator length. */
     fp->dc += len * sizeof(int) + 1;
+
+    return 0;
 }
 
 /**
@@ -261,15 +281,9 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
     }
 
     /* Check if direct register mode. */
-    if (tok[0] == 'r') {
+    if (tok[0] == 'r' && parse_number(tok + 1, &op->value.reg) == 0) {
         /* Apply address mode. */
         op->addr_mode = ADDR_MODE_REGISTER_DIRECT;
-
-        /* Parse register index. */
-        if (parse_number(tok + 1, &op->value.reg) != 0) {
-            report_error(fp, "could not parse register index.");
-            return PARSE_OPERAND_BAD;
-        }
 
         return PARSE_OPERAND_OK;
     }
@@ -430,12 +444,12 @@ static void debug_print_operand(operand_t *op)
 /**
  * Process an instruction.
  */
-static int process_instruction(firstpass_t *fp)
+static int process_instruction(firstpass_t *fp, shared_t *shared)
 {
     inst_t inst;
     operand_t ops[MAX_OPERANDS];
     int nops;
-    int i;
+    symbol_t *sym;
     
     /* Look up instruction name by mnemonic. */
     inst = find_inst(fp->field);
@@ -450,16 +464,24 @@ static int process_instruction(firstpass_t *fp)
     if ((nops = process_operands(fp, ops)) < 0)
         return 1;
 
-#if 0
-    for (i = 0; i < nops; ++i)
-        debug_print_operand(&ops[i]);
-#endif
+    if (fp->labeled) {
+        /* Make a symbol for the instruction. */
+        sym = symtable_new(shared->symtable, fp->label);
+        assert(sym);
+        sym->code = 1;
+        sym->base_addr = SYMBOL_BASE_ADDR(fp->ic);
+        sym->offset = SYMBOL_OFFSET(fp->ic);
+    }
+
+    /* TODO: Calculcate instruction size. Add instruction to code image. Increment IC. */
 
     return 0;
 }
 
 static int process_line(firstpass_t *fp, char *line, shared_t *shared)
 {
+    symbol_t *sym;
+
     /* Increment line counter. */
     ++fp->line_no;
 
@@ -477,7 +499,7 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
     /* Check if first field is a label. */
     if (fp->field[fp->field_len - 1] == ':') {
         /* Try to read as label. */
-        if (process_label_field(fp) != 0)
+        if (process_label_field(fp, shared) != 0)
             return 1;
 
         /* Labeled. */
@@ -495,21 +517,37 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
         /* Process directives. */
         if (strcmp(fp->field + 1, "data") == 0) {
             /* Data directive. */
-            process_data_directive(fp, shared);
+            if (process_data_directive(fp, shared))
+                return 1;
         } else if (strcmp(fp->field + 1, "string") == 0) {
             /* String directive. */
-            process_string_directive(fp, shared);
+            if (process_string_directive(fp, shared))
+                return 1;
+        } else if (strcmp(fp->field + 1, "extern") == 0) {
+            /* Insert a symbol with external flag and address and offset
+               set to zero. */
+            sym = symtable_new(shared->symtable, fp->label);
+            assert(sym);
+            sym->ext = 1;
+            sym->base_addr = 0;
+            sym->offset = 0;
         } else if (strcmp(fp->field + 1, "entry") == 0) {
             /* Entry directives ignored in first pass. */
-        } else if (strcmp(fp->field + 1, "extern") == 0) {
-            /* TODO: Insert into symbol table with base and offset both set to 0. */
-        }
+        } 
     } else if (!fp->eol) {
         /* Not a directive, expect instruction. */
-        if (process_instruction(fp) != 0)
+        if (process_instruction(fp, shared) != 0)
             return 1;
     } else {
         /* End of line after first field, must be empty label. */
+        assert(fp->labeled);
+
+        /* Try to allocate a symbol. */
+        sym = symtable_new(shared->symtable, fp->label);
+        assert(sym);
+        sym->code = 1;
+        sym->base_addr = SYMBOL_BASE_ADDR(fp->ic);
+        sym->offset = SYMBOL_OFFSET(fp->ic);
     }
 
     return 0;

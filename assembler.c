@@ -4,8 +4,8 @@
  * @brief Assembler entry point.
  */
 
-#include "shared.h"
 #include "preprocessor.h"
+#include "shared.h"
 #include "firstpass.h"
 
 #include <stdlib.h>
@@ -47,17 +47,16 @@ int main(int argc, char *argv[])
 
     /* Allocate shared assembly state. We don't keep this on the stack because
        the memory image is quite large. */
-    shared = (shared_t*)calloc(1, sizeof(shared_t));
+    shared = shared_alloc();
 
     /* Run first pass. */
     if (firstpass(outfilename, shared)) {
         printf("error: first pass failed, aborting.\n");
-        free(shared); /* Free shared state. */
+        shared_free(shared);
         return 1;
     }
 
-    /* Free shared state as it's no longer needed. */
-    free(shared);
+    shared_free(shared);
 
     return 0;
 }
