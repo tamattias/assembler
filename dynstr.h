@@ -4,8 +4,8 @@
  * @brief Dynamic string declarations.
  */
 
-#ifndef DYNSTRING_H
-#define DYNSTRING_H
+#ifndef DYNSTR_H
+#define DYNSTR_H
 
 typedef struct dynstr dynstr_t;
 
