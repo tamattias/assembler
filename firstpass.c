@@ -523,7 +523,12 @@ static int process_instruction(firstpass_t *fp, shared_t *shared)
     addr = fp->ic;
 
     /* Write first word (opcode). */
-    shared->code_image[fp->ic++] = MAKE_FIRST_INST_WORD(INST_OPCODE(desc->instruction), 0, 0, 0);
+    shared->code_image[fp->ic++] = MAKE_FIRST_INST_WORD(
+        INST_OPCODE(desc->instruction), /* Opcode */
+        0, /* E flag */
+        0, /* R flag */
+        1  /* A flag */
+    );
 
     if (nops > 0) {
         for (i = 0; i < nops; ++i) {
@@ -581,7 +586,7 @@ static int process_instruction(firstpass_t *fp, shared_t *shared)
             INST_FUNCT(desc->instruction), /* funct */
             0, /* E flag */
             0, /* R flag */
-            0  /* A flag */
+            1  /* A flag */
         );
 
         /* Write/preserve extra words for first operand. */
