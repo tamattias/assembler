@@ -32,10 +32,10 @@ static char *dupstr(const char *str)
     return dup;
 }
 
-static int hash(const char *key)
+static unsigned hash(const char *key)
 {
     char c;
-    int hash = 7;
+    unsigned hash = 7;
     while ((c = *key++) != '\0')
         hash = hash * 31 + c;
     return hash;
@@ -69,11 +69,11 @@ void hashtable_free(hashtable_t *ht)
 
 void hashtable_insert(hashtable_t *ht, const char *key, void *item)
 {
-    int index;
+    unsigned index;
     bucketnode_t *node;
 
     /* Calculate hash and then bucket index from it. */
-    index = hash(key) % ht->capacity;
+    index = hash(key) % (unsigned)ht->capacity;
 
     /* Find tail of bucket. */
     for (node = ht->buckets[index]; node && node->next; node = node->next)
@@ -104,7 +104,7 @@ void *hashtable_find(hashtable_t *ht, const char *key)
     bucketnode_t *bucket;
 
     /* Calculate hash and index then get bucket. */
-    bucket = ht->buckets[(unsigned)hash(key) % (unsigned)ht->capacity];
+    bucket = ht->buckets[hash(key) % (unsigned)ht->capacity];
 
     /* Find node in bucket with matching key. */
     for (; bucket; bucket = bucket->next) {
