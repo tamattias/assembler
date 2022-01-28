@@ -20,8 +20,7 @@ int is_eol(char c);
  *             characters read.
  * @param field Pointer to a buffer to which the field will be copied.
  * @param plen Pointer to an integer that will receive the length of the field.
- * @return 1 if end of line was reached, 0 otherwise.
  */
-int read_field(char **line, char *field, int *plen);
+void read_field(char **line, char *field, int *plen);
 
 #endif

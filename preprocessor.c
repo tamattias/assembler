@@ -38,7 +38,6 @@ int preprocess(const char *infilename, const char *outfilename)
     char macroname[MAX_LINE_LENGTH + 1]; /* Name of currently defined macro. */
     dynstr_t *macro_buf; /* Buffer for currently defined macro's body. */
     dynstr_t *macro; /* Body of referenced macro. */
-    int eol; /* Did we encounter the end of the line when reading a field? */
 
     /* Open input file. */
     in = fopen(infilename, "r");
@@ -66,7 +65,7 @@ int preprocess(const char *infilename, const char *outfilename)
         head = line;
 
         /* Read first field in line. */
-        eol = read_field(&head, field, 0);
+        read_field(&head, field, 0);
 
         /* Logic when processing a line within a macro. */
         if (in_macro) {
@@ -85,7 +84,7 @@ int preprocess(const char *infilename, const char *outfilename)
         /* Check if new macro is being declared. */
         if (strcmp(field, "macro") == 0) {
             /* End of line before macro name specified. */
-            if (eol) {
+            if (is_eol(*head)) {
                 printf("preprocess: macro missing name.\n");
                 break;
             }

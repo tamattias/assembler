@@ -58,6 +58,7 @@ static int read_comma_separated_data(const char *input, int *data, int limit)
     char *tok; /* Current token. */
     int nval; /* Integer parsed from current token. */
     int count = 0; /* Tokens read successfully so far. */
+    int test;
     
     /* Make a copy of the input for tokenization. */
     strncpy(tmpstr, input, MAX_LINE_LENGTH);
@@ -66,7 +67,7 @@ static int read_comma_separated_data(const char *input, int *data, int limit)
     tok = strtok(tmpstr, ",");
     while (tok) {
         /* Read integer from token. */
-        if (sscanf(tok, "%d", &nval) != 1)
+        if ((test = sscanf(tok, "%d", &nval)) != 1)
             return -1; /* Not integer, abort. */
 
         /* Store in output array. */
@@ -122,11 +123,12 @@ static int process_label_field(firstpass_t *fp)
 /**
  * Reads the next field and sets the eol flag if end of line reached.
 
- * @return Non-zero if end of line, else 0.
+ * @return Non-zero if end of line, else zero.
  */
 static int next_field(firstpass_t *fp)
 {
-    return (fp->eol = read_field(&fp->line_head, fp->field, &fp->field_len));
+    read_field(&fp->line_head, fp->field, &fp->field_len);
+    return is_eol(*fp->line_head);
 }
 
 /**
@@ -209,7 +211,7 @@ static void process_string_directive(firstpass_t *fp)
     buf[len] = '\0';
 
     /* Increment data counter. */
-    fp->dc += len;
+    fp->dc += len * sizeof(int);
 }
 
 /**
@@ -236,12 +238,15 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
     /* Increment line counter. */
     ++fp->line_no;
 
+
     /* Initialize head to beginning of line. */
     fp->line_head = line;
 
     /* First field. */
     if (next_field(fp) != 0)
         return 0; /* Skip empty line. */
+
+    printf(fp->line_head);
 
     /* Handle comment lines. */
     if (fp->field[0] == ';')
