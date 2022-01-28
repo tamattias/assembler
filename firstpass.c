@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "ioutil.h"
 #include "shared.h"
+#include "instruction.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -118,8 +119,8 @@ static int process_label_field(firstpass_t *fp)
 }
 
 /**
- * Reads the next field.
- *
+ * Reads the next field and sets the eol flag if end of line reached.
+
  * @return Non-zero if end of line, else 0.
  */
 static int next_field(firstpass_t *fp)
@@ -142,10 +143,20 @@ static void process_data_directive(firstpass_t *fp)
     
     data_len = read_comma_separated_data(fp->line_head, data, MAX_DATA_LENGTH);
 
+    /* Check if bad data. */
+    if (data_len == -1) {
+        report_error(fp, "invalid data after data directive.");
+        return;
+    }
+
+    /* Check if empty data. */
     if (data_len == 0) {
         report_error(fp, "no data after data directive.");
         return;
     }
+
+    /* Increment data counter. */
+    fp->dc += data_len;
 }
 
 /**
@@ -195,9 +206,31 @@ static void process_string_directive(firstpass_t *fp)
 
     /* Append null terminator. */
     buf[len] = '\0';
+
+    /* Increment data counter. */
+    fp->dc += len;
 }
 
-static void process_line(firstpass_t *fp, char *line, shared_t *shared)
+/**
+ * Process an instruction.
+ */
+static int process_instruction(firstpass_t *fp)
+{
+    inst_t inst;
+    
+    /* Look up instruction name by mnemonic. */
+    inst = find_inst(fp->field);
+
+    /* No such mnemonic. */
+    if (inst == INST_BAD) {
+        report_error(fp, "bad instruction mnemonic: %s", fp->field);
+        return 1;
+    }
+
+    return 0;
+}
+
+static int process_line(firstpass_t *fp, char *line, shared_t *shared)
 {
     /* Increment line counter. */
     ++fp->line_no;
@@ -207,33 +240,48 @@ static void process_line(firstpass_t *fp, char *line, shared_t *shared)
 
     /* First field. */
     if (next_field(fp) != 0)
-        return; /* Skip empty line. */
+        return 0; /* Skip empty line. */
 
     /* Handle comment lines. */
     if (fp->field[0] == ';')
-        return; /* Skip comment line. */
+        return 0; /* Skip comment line. */
 
     /* Check if first field is a label. */
     if (fp->field[fp->field_len] == ':') {
         /* Try to read as label. */
         if (process_label_field(fp) != 0)
-            return;
+            return 1;
 
         /* Labeled. */
         fp->labeled = 1;
 
         /* Next field. */
         if (next_field(fp) != 0)
-            return;
+            return 0;
     } else {
         /* Not labeled. */
         fp->labeled = 0;
     }
 
-    if (strcmp(fp->field, ".data") == 0) {
-        process_data_directive(fp);
-    } else if (strcmp(fp->field, ".string") == 0) {
-        process_string_directive(fp);
+    if (fp->field[0] == '.') {
+        /* Process directives. */
+        if (strcmp(fp->field + 1, "data") == 0) {
+            /* Data directive. */
+            process_data_directive(fp);
+        } else if (strcmp(fp->field + 1, "string") == 0) {
+            /* String directive. */
+            process_string_directive(fp);
+        } else if (strcmp(fp->field + 1, "entry") == 0) {
+            /* Entry directives ignored in first pass. */
+        } else if (strcmp(fp->field + 1, "extern") == 0) {
+            /* TODO: Insert into symbol table with base and offset both set to 0. */
+        }
+    } else if (!fp->eol) {
+        /* Not a directive, expect instruction. */
+        if (process_instruction(fp) != 0)
+            return 1;
+    } else {
+        /* End of line after first field, must be empty label. */
     }
 }
 
@@ -241,24 +289,24 @@ int firstpass(const char *filename, struct shared *shared)
 {
     FILE *in; /* Input file pointer. */
     char line[MAX_LINE_LENGTH + 1]; /* Line buffer. */
-    firstpass_t fp;
+    firstpass_t fp; /* Internal state. */
+    int error = 0; /* Error flag. */
 
     /* Try to open input file. */
-    in = fopen(filename, "r");
-    if (!in) {
+    if ((in = fopen(filename, "r")) == 0) {
         printf("error: firstpass: could not open input file %s.\n", filename);
         return 1;
     }
 
-    /* Zero initialize first pass state. */
+    /* Zero initialize internal state. */
     memset(&fp, 0, sizeof(fp));
 
     /* Process file line by line. */
     while (fgets(line, sizeof(line), in))
-        process_line(&fp, line, shared);
+        error |= process_line(&fp, line, shared);
 
     /* Close input file. */
     fclose(in);
 
-    return 0;
+    return error;
 }

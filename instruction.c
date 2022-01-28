@@ -1,37 +1,48 @@
+/**
+ * @file instruction.c
+ * @author Tamir Attias
+ * @file Instruction set implementations.
+ */
+
 #include "instruction.h"
 
 #include <string.h>
 
+/**
+ * Mapping of instruction mnemonics to instructions.
+ */
 typedef struct {
-    const char *name;
-    instruction_t instruction;
-} instruction_desc_t;
+    const char *mne;
+    const inst_t instruction;
+} inst_desc_t;
 
-static instruction_desc_t descs[] = {
-    {"mov", MAKE_INSTRUCTION(0, 0)},
-    {"cmp", MAKE_INSTRUCTION(1, 0)},
-    {"add", MAKE_INSTRUCTION(2, 10)},
-    {"sub", MAKE_INSTRUCTION(2, 11)},
-    {"lea", MAKE_INSTRUCTION(4, 0)},
-    {"clr", MAKE_INSTRUCTION(5, 10)},
-    {"not", MAKE_INSTRUCTION(5, 11)},
-    {"inc", MAKE_INSTRUCTION(5, 12)},
-    {"dec", MAKE_INSTRUCTION(5, 13)},
-    {"jmp", MAKE_INSTRUCTION(9, 10)},
-    {"bne", MAKE_INSTRUCTION(9, 11)},
-    {"jsr", MAKE_INSTRUCTION(9, 12)},
-    {"red", MAKE_INSTRUCTION(12, 0)},
-    {"prn", MAKE_INSTRUCTION(13, 0)},
-    {"rts", MAKE_INSTRUCTION(14, 0)},
-    {"stop", MAKE_INSTRUCTION(15, 0)},
+static const inst_desc_t instruction_set[] = {
+    {"mov", INST_MOV},
+    {"cmp", INST_CMP},
+    {"add", INST_ADD},
+    {"sub", INST_SUB},
+    {"lea", INST_LEA},
+    {"clr", INST_CLR},
+    {"not", INST_NOT},
+    {"inc", INST_INC},
+    {"dec", INST_DEC},
+    {"jmp", INST_JMP},
+    {"bne", INST_BNE},
+    {"jsr", INST_JSR},
+    {"red", INST_RED},
+    {"prn", INST_PRN},
+    {"rts", INST_RTS},
+    {"stop", INST_STOP},
 };
 
-instruction_t find_instruction(const char *name)
+static const int instruction_set_size = sizeof(instruction_set) / sizeof(instruction_set[0]);
+
+inst_t find_inst(const char *mne)
 {
     int i;
-    for (i = 0; i < sizeof(descs)/sizeof(descs[0]); ++i) {
-        if (strcmp(descs[i].name, name) == 0)
-            return descs[i].instruction;
+    for (i = 0; i < instruction_set_size; ++i) {
+        if (strcmp(instruction_set[i].mne, mne) == 0)
+            return instruction_set[i].instruction;
     }
-    return 0;
+    return INST_BAD;
 }

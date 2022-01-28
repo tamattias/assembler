@@ -6,6 +6,7 @@
 
 #include "shared.h"
 #include "preprocessor.h"
+#include "firstpass.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -45,7 +46,8 @@ int main(int argc, char *argv[])
 
     /* Run first pass. */
     if (firstpass(outfilename, &shared)) {
-
+        printf("error: first pass failed, aborting.\n");
+        return 1;
     }
 
     return 0;
