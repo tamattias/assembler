@@ -22,7 +22,7 @@
 /**
  * Extract function code from instruction.
  */
-#define INST_FUNC(inst)  ((inst) >> 16)
+#define INST_FUNCT(inst)  ((inst) >> 16)
 
 #define INST_BAD (-1) /** Bad instruction. */
 #define INST_MOV  MAKE_INST(0, 0)
@@ -41,6 +41,43 @@
 #define INST_PRN  MAKE_INST(13, 0)
 #define INST_RTS  MAKE_INST(14, 0)
 #define INST_STOP MAKE_INST(15, 0)
+
+/**
+ * Make the first code word for an encoded instruction.
+ */
+#define MAKE_FIRST_INST_WORD(opcode, e, r, a) \
+    ( \
+        (((opcode) & 0xFFFF))   | \
+        ((e) ? (1 << 16) : 0)  | \
+        ((r) ? (1 << 17) : 0)  | \
+        ((a) ? (1 << 17) : 0)    \
+    )
+
+/**
+ * Make the second code word for an encoded instruction.
+ */
+#define MAKE_SECOND_INST_WORD(dst_addr_mode, dst_reg, src_addr_mode, src_reg, funct, e, r, a) \
+    ( \
+        ((dst_addr_mode) & 0x3)       | \
+        (((dst_reg) & 0xFF) << 2)      | \
+        (((src_addr_mode) & 0x3) << 6) | \
+        (((src_reg) & 0xFF) << 8)      | \
+        (((funct) & 0xFF) << 12)       | \
+        ((e) ? (1 << 16) : 0)         | \
+        ((r) ? (1 << 17) : 0)         | \
+        ((a) ? (1 << 17) : 0)           \
+    )
+
+/**
+ * Make an extra code word for an encoded instruction.
+ */
+#define MAKE_EXTRA_INST_WORD(value, e, r, a) \
+    ( \
+        (((value) & 0xFFFF))   | \
+        ((e) ? (1 << 16) : 0)  | \
+        ((r) ? (1 << 17) : 0)  | \
+        ((a) ? (1 << 17) : 0)    \
+    )
 
 /**
  * Maximum number of operands per instruction.
@@ -62,11 +99,24 @@ typedef long word_t;
  * Addressing mode.
  */
 typedef enum {
-    ADDR_MODE_IMMEDIATE,
-    ADDR_MODE_DIRECT,
-    ADDR_MODE_INDEX,
-    ADDR_MODE_REGISTER_DIRECT
+    ADDR_MODE_IMMEDIATE = (1 << 0),
+    ADDR_MODE_DIRECT = (1 << 1),
+    ADDR_MODE_INDEX = (1 << 2),
+    ADDR_MODE_REGISTER_DIRECT = (1 << 3)
 } addr_mode_t;
+
+
+#define ADDR_MODE_ALL (ADDR_MODE_IMMEDIATE | ADDR_MODE_DIRECT | ADDR_MODE_INDEX | ADDR_MODE_REGISTER_DIRECT)
+
+/**
+ * Describes the structure of a valid instruction.
+ */
+typedef struct {
+    const char *mne; /**< Mnemonic. */
+    const inst_t instruction; /**< Instruction code. */
+    int noperands; /**< Number of operands. */
+    int addr_modes[MAX_OPERANDS]; /**< Legal address modes for each operand (bitfield of ADDR_MODE_*). */
+} inst_desc_t;
 
 /**
  * Operand.
@@ -81,11 +131,11 @@ typedef struct {
 } operand_t;
 
 /**
- * Translates an instruction mnemonic to an instruction.
+ * Finds the description of an instruction by its mnemonic.
  *
  * @param mne Instruction mnemonic.
- * @return The instruction (one of INST_) or INST_BAD.
+ * @return Pointer to instruction description or null if no such instruction.
  */
-inst_t find_inst(const char *mne);
+const inst_desc_t *find_inst(const char *mne);
 
 #endif

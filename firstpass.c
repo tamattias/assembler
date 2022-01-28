@@ -441,21 +441,71 @@ static void debug_print_operand(operand_t *op)
 }
 #endif
 
+static int addr_mode_to_index(addr_mode_t addr_mode) {
+    switch (addr_mode) {
+    case ADDR_MODE_IMMEDIATE:
+        return 0;
+
+    case ADDR_MODE_DIRECT:
+        return 1;
+
+    case ADDR_MODE_INDEX:
+        return 2;
+
+    case ADDR_MODE_REGISTER_DIRECT:
+        return 3;
+    }
+    return 0;
+}
+
+static int write_extra_words(firstpass_t *fp, shared_t *shared, const operand_t *op)
+{
+    switch (op->addr_mode) {
+    case ADDR_MODE_IMMEDIATE: 
+        /* Write extra word containing the immediate value with A flag set. */
+        shared->code_image[fp->ic++] = MAKE_EXTRA_INST_WORD(
+            op->value.immediate, /* Value */
+            0, /* E flag */
+            0, /* R flag */
+            1  /* A flag */
+        );
+        break;
+    
+    case ADDR_MODE_DIRECT:
+        /* Preserve space for two extra words, filled later in second pass. */
+        fp->ic += 2;
+        break;
+
+    case ADDR_MODE_INDEX:
+        /* Preserve space for two extra words, filled later in second pass. */
+        fp->ic += 2;
+        break;
+
+    case ADDR_MODE_REGISTER_DIRECT:
+        /* No extra words needed, register stored in second word. */
+        break;
+    }
+    return 0;
+}
+
 /**
  * Process an instruction.
  */
 static int process_instruction(firstpass_t *fp, shared_t *shared)
 {
-    inst_t inst;
-    operand_t ops[MAX_OPERANDS];
-    int nops;
-    symbol_t *sym;
+    const inst_desc_t *desc; /* Instruction code. */
+    operand_t ops[MAX_OPERANDS]; /* Operands. */
+    int nops; /* Number of operands. */
+    symbol_t *sym; /* Symbol. */
+    word_t addr; /* Address of instruction. */
+    int i; /* Counter. */
+    int src_reg, dst_reg; /* Source and destination register numbers for encoding second instruction. */
     
     /* Look up instruction name by mnemonic. */
-    inst = find_inst(fp->field);
+    desc = find_inst(fp->field);
 
     /* No such mnemonic. */
-    if (inst == INST_BAD) {
+    if (!desc) {
         report_error(fp, "bad instruction mnemonic: %s", fp->field);
         return 1;
     }
@@ -464,16 +514,92 @@ static int process_instruction(firstpass_t *fp, shared_t *shared)
     if ((nops = process_operands(fp, ops)) < 0)
         return 1;
 
-    if (fp->labeled) {
+    if (desc->noperands != nops) {
+        report_error(fp, "incorrect number of operands (expected %d, got %d)", desc->noperands, nops);
+        return 1;
+    }
+
+    /* Store instruction address before incrementing IC. */
+    addr = fp->ic;
+
+    /* Write first word (opcode). */
+    shared->code_image[fp->ic++] = MAKE_FIRST_INST_WORD(INST_OPCODE(desc->instruction), 0, 0, 0);
+
+    if (nops > 0) {
+        for (i = 0; i < nops; ++i) {
+            /* Check if the addressing mode used is legal by checking if its bit
+            is set in the addressing modes bitfield of the description. */
+            if (!(desc->addr_modes[i] & ops[i].addr_mode)) {
+                report_error(fp, "operand %d has invalid addressing mode.", i + 1);
+                return 1;
+            }
+        }
+
+        /* Default to zeroth register. */
+        src_reg = 0;
+        dst_reg = 0;
+
+        /**
+         * Determine register value based on operands.
+         */ 
+        if (nops == 1) {
+            /* Check if destination operand has index or direct addressing mode. */
+            if (ops[0].addr_mode & (ADDR_MODE_INDEX | ADDR_MODE_REGISTER_DIRECT)) {
+                src_reg = 0;
+                dst_reg = ops[0].value.reg;
+            }
+        } else {
+            /* Check if source operand has index or direct addressing mode. */
+            if (ops[0].addr_mode & (ADDR_MODE_INDEX | ADDR_MODE_REGISTER_DIRECT)) {
+                src_reg = ops[0].value.reg;
+            }
+
+            /* Check if destination operand has index or direct addressing mode. */
+            if (ops[1].addr_mode & (ADDR_MODE_INDEX | ADDR_MODE_REGISTER_DIRECT)) {
+                dst_reg = ops[1].value.reg;
+            }
+        }
+
+        /*
+         * Write the second word which contains the function code as well as
+         * addressing modes for the operands.
+         *
+         * The addressing modes for the source and destination registers as
+         * well as the register numbers are determined based on the number of
+         * operands. If there is a single operand then it is the destination
+         * operand and so the source addressing mode and register number will
+         * be set to zero. Otherwise, the source addressing mode and register
+         * number will be deteremined by the first operand and the destination
+         * addressing mode and register number will be determined by the
+         * second operand.
+         */
+        shared->code_image[fp->ic++] = MAKE_SECOND_INST_WORD(
+            nops == 1 ? addr_mode_to_index(ops[0].addr_mode) : addr_mode_to_index(ops[1].addr_mode), /* dst addr mode */
+            dst_reg, /* dst register */
+            nops == 2 ? addr_mode_to_index(ops[0].addr_mode) : 0, /* src addr mode */
+            src_reg, /* src register */
+            INST_FUNCT(desc->instruction), /* funct */
+            0, /* E flag */
+            0, /* R flag */
+            0  /* A flag */
+        );
+
+        /* Write/preserve extra words for first operand. */
+        write_extra_words(fp, shared, &ops[0]);
+
+        /* Write/preserve extra words for second operand if specified. */
+        if (nops > 1)
+            write_extra_words(fp, shared, &ops[1]);
+    }
+
+     if (fp->labeled) {
         /* Make a symbol for the instruction. */
         sym = symtable_new(shared->symtable, fp->label);
         assert(sym);
         sym->code = 1;
-        sym->base_addr = SYMBOL_BASE_ADDR(fp->ic);
-        sym->offset = SYMBOL_OFFSET(fp->ic);
+        sym->base_addr = SYMBOL_BASE_ADDR(addr);
+        sym->offset = SYMBOL_OFFSET(addr);
     }
-
-    /* TODO: Calculcate instruction size. Add instruction to code image. Increment IC. */
 
     return 0;
 }
