@@ -23,7 +23,7 @@ test: assembler
 	./assembler test/data
 
 debug: assembler
-	gdb -ex run --args ./assembler test/data
+	gdb -ex run --args ./assembler test/preprocess
 
 clean:
 	-rm -rf assembler *.o *.d

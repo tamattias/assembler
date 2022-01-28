@@ -98,7 +98,8 @@ static int process_label_field(firstpass_t *fp)
 
         /* Check if alphanumeric. */
         if (!isalnum(fp->label[fp->label_len - 1])) {
-            report_error(fp, "invalid character in label (only alphanumeric characters allowed)");
+            report_error(fp, "invalid character '%c' in label (only alphanumeric characters allowed)",
+                fp->label[fp->label_len - 1]);
             bad = 1; /* Flag symbol as bad. */
             break;
         }
@@ -247,7 +248,7 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
         return 0; /* Skip comment line. */
 
     /* Check if first field is a label. */
-    if (fp->field[fp->field_len] == ':') {
+    if (fp->field[fp->field_len - 1] == ':') {
         /* Try to read as label. */
         if (process_label_field(fp) != 0)
             return 1;
