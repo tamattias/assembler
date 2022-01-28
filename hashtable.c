@@ -104,7 +104,7 @@ void *hashtable_find(hashtable_t *ht, const char *key)
     bucketnode_t *bucket;
 
     /* Calculate hash and index then get bucket. */
-    bucket = ht->buckets[hash(key) % ht->capacity];
+    bucket = ht->buckets[(unsigned)hash(key) % (unsigned)ht->capacity];
 
     /* Find node in bucket with matching key. */
     for (; bucket; bucket = bucket->next) {
