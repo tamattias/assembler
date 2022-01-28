@@ -7,6 +7,8 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include "constants.h"
+
 /**
  * Make a complete instruction ID from opcode and function code.
  */
@@ -40,7 +42,40 @@
 #define INST_RTS  MAKE_INST(14, 0)
 #define INST_STOP MAKE_INST(15, 0)
 
+/**
+ * Maximum number of operands per instruction.
+ */
+#define MAX_OPERANDS 3
+
+/**
+ * Instruction code.
+ */
 typedef int inst_t;
+
+/**
+ * Data type used internally for representing a machine word.
+ * We use a long because it is guaranteed to be at least 32-bit wide.
+ */
+typedef long word_t;
+
+/**
+ * Addressing mode.
+ */
+typedef enum {
+    ADDR_MODE_IMMEDIATE,
+    ADDR_MODE_DIRECT,
+    ADDR_MODE_INDEX,
+    ADDR_MODE_REGISTER_DIRECT
+} addr_mode_t;
+
+/**
+ * Operand.
+ */
+typedef struct {
+    addr_mode_t addr_mode;
+    char label[MAX_LABEL_LENGTH];
+    long value;
+} operand_t;
 
 /**
  * Translates an instruction mnemonic to an instruction.

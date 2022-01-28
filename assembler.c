@@ -8,6 +8,7 @@
 #include "preprocessor.h"
 #include "firstpass.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
     char *basename;
     char infilename[FILENAME_MAX + 1];
     char outfilename[FILENAME_MAX + 1];
-    shared_t shared;
+    shared_t *shared = 0;
 
     if (argc < 2) {
         print_usage();
@@ -44,11 +45,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* Allocate shared assembly state. We don't keep this on the stack because
+       the memory image is quite large. */
+    shared = (shared_t*)calloc(1, sizeof(shared_t));
+
     /* Run first pass. */
-    if (firstpass(outfilename, &shared)) {
+    if (firstpass(outfilename, shared)) {
         printf("error: first pass failed, aborting.\n");
+        free(shared); /* Free shared state. */
         return 1;
     }
+
+    /* Free shared state as it's no longer needed. */
+    free(shared);
 
     return 0;
 }

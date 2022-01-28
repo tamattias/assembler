@@ -20,10 +20,10 @@ include $(SRCS:.c=.d)
 	rm -f $@.$$$$
 
 test: assembler
-	./assembler test/data
+	./assembler test/ps
 
 debug: assembler
-	gdb -ex run --args ./assembler test/preprocess
+	gdb -ex run --args ./assembler test/ps
 
 clean:
 	-rm -rf assembler *.o *.d

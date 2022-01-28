@@ -15,6 +15,8 @@
 #include <string.h>
 #include <ctype.h>
 
+/* TODO: Handle cases of memory image overflow (data/instruction). */
+
 /**
  * First pass internal state.
  */
@@ -46,17 +48,17 @@ static void report_error(firstpass_t *fp, const char *fmt, ...)
  *
  * @param input Pointer to a null terminated string containing a comma
  *              separated list of integers.
- * @param data Pointer to an array of integers in which to store the read
+ * @param data Pointer to an array of words in which to store the read
  *             data.
  * @param limit Maximum number of items that can be read into data.
  * @note Only the first MAX_LINE_LENGTH bytes of data will be scanned.
  * @return Number of integers read or -1 if invalid data.
  */
-static int read_comma_separated_data(const char *input, int *data, int limit)
+static int read_comma_separated_data(const char *input, word_t *data, int limit)
 {
     char tmpstr[MAX_LINE_LENGTH + 1]; /* Copy of input for tokenization. */
     char *tok; /* Current token. */
-    int nval; /* Integer parsed from current token. */
+    word_t nval; /* Integer parsed from current token. */
     int count = 0; /* Tokens read successfully so far. */
     int test;
     
@@ -67,7 +69,9 @@ static int read_comma_separated_data(const char *input, int *data, int limit)
     tok = strtok(tmpstr, ",");
     while (tok) {
         /* Read integer from token. */
-        if ((test = sscanf(tok, "%d", &nval)) != 1)
+        /* TODO: Make sure this only allows decimal numbers (not hex etc.) */
+        /* TODO: Don't allow whitespace separated values between commas. */
+        if ((test = sscanf(tok, "%ld", &nval)) != 1)
             return -1; /* Not integer, abort. */
 
         /* Store in output array. */
@@ -134,17 +138,20 @@ static int next_field(firstpass_t *fp)
 /**
  * Process data after a .data directive.
  */
-static void process_data_directive(firstpass_t *fp)
+static void process_data_directive(firstpass_t *fp, shared_t *shared)
 {
-    int data[MAX_DATA_LENGTH];
-    int data_len;
+    int data_len; /* Number of words read. */
 
     if (fp->eol) {
         report_error(fp, "missing data after data directive.");
         return;
     }
     
-    data_len = read_comma_separated_data(fp->line_head, data, MAX_DATA_LENGTH);
+    /* Read comma separated integer values into data image. */
+    data_len = read_comma_separated_data(
+        fp->line_head,
+        shared->data_image + fp->dc,
+        MAX_DATA_LENGTH);
 
     /* Check if bad data. */
     if (data_len == -1) {
@@ -165,10 +172,9 @@ static void process_data_directive(firstpass_t *fp)
 /**
  * Process data after a .string directive.
  */
-static void process_string_directive(firstpass_t *fp)
+static void process_string_directive(firstpass_t *fp, shared_t *shared)
 {
     char c; /* Last read string directive character. */
-    char buf[MAX_LINE_LENGTH + 1]; /* String directive buffer. */
     int len; /* Number of characters in buf. */
 
     if (fp->eol) {
@@ -199,7 +205,7 @@ static void process_string_directive(firstpass_t *fp)
 
     /* Copy string into data buffer. */
     while ((c = *fp->line_head++) != '\0' && c != '"')
-        buf[len++] = c;
+        shared->data_image[fp->dc++] = c;
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
@@ -208,10 +214,10 @@ static void process_string_directive(firstpass_t *fp)
     }
 
     /* Append null terminator. */
-    buf[len] = '\0';
+    shared->data_image[fp->dc++] = '\0';
 
-    /* Increment data counter. */
-    fp->dc += len * sizeof(int);
+    /* Increment data counter by string length plus null terminator length. */
+    fp->dc += len * sizeof(int) + 1;
 }
 
 /**
@@ -237,7 +243,6 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
 {
     /* Increment line counter. */
     ++fp->line_no;
-
 
     /* Initialize head to beginning of line. */
     fp->line_head = line;
@@ -271,10 +276,10 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
         /* Process directives. */
         if (strcmp(fp->field + 1, "data") == 0) {
             /* Data directive. */
-            process_data_directive(fp);
+            process_data_directive(fp, shared);
         } else if (strcmp(fp->field + 1, "string") == 0) {
             /* String directive. */
-            process_string_directive(fp);
+            process_string_directive(fp, shared);
         } else if (strcmp(fp->field + 1, "entry") == 0) {
             /* Entry directives ignored in first pass. */
         } else if (strcmp(fp->field + 1, "extern") == 0) {
@@ -287,6 +292,8 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
     } else {
         /* End of line after first field, must be empty label. */
     }
+
+    return 0;
 }
 
 int firstpass(const char *filename, struct shared *shared)

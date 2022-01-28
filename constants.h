@@ -27,4 +27,14 @@
  */
 #define MAX_DATA_LENGTH 31
 
+/**
+ * Maximum size of data image in words.
+ */
+#define MAX_DATA_IMAGE_SIZE 8192
+
+/**
+ * Maximum size of code image in words.
+ */
+#define MAX_CODE_IMAGE_SIZE 8192
+
 #endif
