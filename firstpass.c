@@ -524,7 +524,7 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
             if (process_string_directive(fp, shared))
                 return 1;
         } else if (strcmp(fp->field + 1, "extern") == 0) {
-            /* Insert a symbol with external flag and address and offset
+            /* Insert a symbol with external flag  and address and offset
                set to zero. */
             sym = symtable_new(shared->symtable, fp->label);
             assert(sym);
