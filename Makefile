@@ -3,14 +3,14 @@ SRCS := $(wildcard *.c)
 DEPS := $(patsubst %.c, %.d, $(SRCS))
 OBJS := $(patsubst %.c, %.o, $(SRCS))
 
-include $(SRCS:.c=.d)
-
 .PHONY: clean
 
 assembler: $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
-%.o: %.c $(DEPS)
+include $(SRCS:.c=.d)
+
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.d: %.c

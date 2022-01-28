@@ -4,6 +4,7 @@
  * @brief Assembler entry point.
  */
 
+#include "shared.h"
 #include "preprocessor.h"
 
 #include <stdio.h>
@@ -17,8 +18,9 @@ void print_usage()
 int main(int argc, char *argv[])
 {
     char *basename;
-    char infilename[FILENAME_MAX +  1];
+    char infilename[FILENAME_MAX + 1];
     char outfilename[FILENAME_MAX + 1];
+    shared_t shared;
 
     if (argc < 2) {
         print_usage();
@@ -42,7 +44,7 @@ int main(int argc, char *argv[])
     }
 
     /* Run first pass. */
-    if (firstpass(outfilename)) {
+    if (firstpass(outfilename, &shared)) {
 
     }
 

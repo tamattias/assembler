@@ -66,7 +66,7 @@ int preprocess(const char *infilename, const char *outfilename)
         head = line;
 
         /* Read first field in line. */
-        eol = read_field(&head, field);
+        eol = read_field(&head, field, 0);
 
         /* Logic when processing a line within a macro. */
         if (in_macro) {
@@ -91,7 +91,7 @@ int preprocess(const char *infilename, const char *outfilename)
             }
 
             /* Read macro name. */
-            read_field(&head, macroname);
+            read_field(&head, macroname, 0);
 
             /* TODO: Check for extra fields? Report error? */
 

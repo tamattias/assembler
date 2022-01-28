@@ -1,11 +1,16 @@
 #include "ioutil.h"
 
+#include <ctype.h>
+
 int is_eol(char c)
 {
     return c == '\0' || c == '\n';
 }
 
-int read_field(char **line, char *field)
+/**
+ * TODO: Adapt this so end of line is unread for is_eol to work.
+ */
+int read_field(char **line, char *field, int *plen)
 {
     char c;
 
@@ -18,10 +23,19 @@ int read_field(char **line, char *field)
 
     /* Unread whitespace. */
     --(*line);
+
+    /* Initialize length to 0. */
+    if (plen)
+        *plen = 0;
     
     /* Copy first field until space or end of line. */
-    while ((c = *(*line)++) != '\0' && !isspace(c))
+    while ((c = *(*line)++) != '\0' && !isspace(c)) {
         *field++ = c;
+
+        /* Increment length. */
+        if (plen)
+            ++*plen;
+    }
 
     /* Add null terminator. */
     field[0] = 0;
