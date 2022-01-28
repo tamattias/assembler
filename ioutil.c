@@ -48,44 +48,52 @@ void read_field(char **line, char *field, int *plen)
     field[0] = 0;
 }
 
-int parse_operand(const char *tok, addr_mode_t addr_mode, operand_t *op)
+int parse_number(const char *tok, word_t *w)
 {
-    char c;
+    char c; /* Current character. */
+    word_t sign = 1; /* Number sign. */
 
     /* Skip whitespace. */
-    while ((c = *tok++) != '\0' && isspace(tok))
+    while (!is_eol(c = *tok++) && isspace(c))
         ;
-
+    
     /* Check if empty string. */
-    if (c == '\0')
+    if (is_eol(c)) {
+        printf("parse_number: empty string.\n");
         return 1;
-
-    /* Unread non-whitespace char. */
-    --tok;
-
-    if (addr_mode == ADDR_MODE_IMMEDIATE) {
-        /* Read integer value. */
-        /* TODO: Only allow decimal numbers. */
-        return sscanf(tok, "#%ld", &op->value) == 1 ? 0 : -1;
-    } else if (addr_mode == ADDR_MODE_DIRECT) {
-        /* Read label. */
-        return sscanf(tok, "%s", op->label) == 1 ? 0 : -1;
-    } else if (addr_mode == ADDR_MODE_INDEX) {
-        /* Read label and register index. */
-        /* TODO: Only allow decimal numbers. */
-        if (sscanf(tok, "%s[r%ld]", op->label, &op->value) != 2)
-            return -1;
-
-        /* Check if register index is valid. */
-        if (op->value < 10 || op->value > 15)
-            return -1; /* Invalid register index. */
-    } else if (addr_mode == ADDR_MODE_REGISTER_DIRECT) {
-        /* TODO: Handle other register types. */
-        /* TODO: Only allow decimal numbers. */
-        return sscanf(tok, "r%ld", &op->value) == 1 ? 0 : -1;
     }
 
-    /* TODO: Keep reading. If non-whitespace or EOL encountered then this is an error.*/
+
+    /* Check if number sign. */
+    if (c == '+' || c == '-') {
+        sign *= (c == '-') ? -1 : 1;
+    } else {
+        /* Unread last character. */
+        --tok;
+    }
+
+    /* Initialize to 0. */
+    *w = 0;
+    
+    /* Read digits. */
+    while (!is_eol(c = *tok++) && isdigit(c)) {
+        *w *= 10;
+        *w += c - '0';
+    }
+    
+    /* Unread last non-digit character. */
+    --tok;
+
+    /* Apply sign. */
+    *w *= sign;
+    
+    /* Check if we have any extraneous characters. */
+    while (!is_eol(c = *tok++) && isspace(c))
+        ;
+    if (!is_eol(c)) {
+        printf("parse_number: extraneous character: %c.\n", c);
+        return -1; /* Got extraneous characters. TODO: Indicate in return value? */
+    }
 
     return 0;
 }

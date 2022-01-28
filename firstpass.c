@@ -60,7 +60,6 @@ static int read_comma_separated_data(const char *input, word_t *data, int limit)
     char *tok; /* Current token. */
     word_t nval; /* Integer parsed from current token. */
     int count = 0; /* Tokens read successfully so far. */
-    int test;
     
     /* Make a copy of the input for tokenization. */
     strncpy(tmpstr, input, MAX_LINE_LENGTH);
@@ -71,7 +70,8 @@ static int read_comma_separated_data(const char *input, word_t *data, int limit)
         /* Read integer from token. */
         /* TODO: Make sure this only allows decimal numbers (not hex etc.) */
         /* TODO: Don't allow whitespace separated values between commas. */
-        if ((test = sscanf(tok, "%ld", &nval)) != 1)
+        /* TODO: Use parse_number instead? */
+        if (sscanf(tok, "%ld", &nval) != 1)
             return -1; /* Not integer, abort. */
 
         /* Store in output array. */
@@ -221,11 +221,221 @@ static void process_string_directive(firstpass_t *fp, shared_t *shared)
 }
 
 /**
+ * parse_operand return values.
+ */
+typedef enum {
+    PARSE_OPERAND_OK,   /** Operand parsed successfully. */
+    PARSE_OPERAND_BAD,  /** Token was not a valid operand. */
+    PARSE_OPERAND_EMPTY /** Token was blank. */
+} parse_operand_result_t;
+
+static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, operand_t *op)
+{
+    char c; /* Current character. */
+    int label_len; /* Label length. */
+    int reg_id; /* Register ID. */
+
+    /* Skip whitespace. */
+    while (!is_eol(c = *tok++) && isspace(c))
+        ;
+
+    /* Check if empty string. */
+    if (is_eol(c))
+        return PARSE_OPERAND_EMPTY;
+
+    /* Unread non-whitespace char. */
+    --tok;
+
+    /* Check if immediate mode. */
+    if (tok[0] == '#') {
+        /* Apply address mode. */
+        op->addr_mode = ADDR_MODE_IMMEDIATE;
+
+        /* Parse immediate value. */
+        if (parse_number(tok + 1, &op->value.immediate) != 0) {
+            report_error(fp, "could not parse immediate number in operand.");
+            return PARSE_OPERAND_BAD;
+        }
+
+        return PARSE_OPERAND_OK;
+    }
+
+    /* Check if direct register mode. */
+    if (tok[0] == 'r') {
+        /* Apply address mode. */
+        op->addr_mode = ADDR_MODE_REGISTER_DIRECT;
+
+        /* Parse register index. */
+        if (parse_number(tok + 1, &op->value.reg) != 0) {
+            report_error(fp, "could not parse register index.");
+            return PARSE_OPERAND_BAD;
+        }
+
+        return PARSE_OPERAND_OK;
+    }
+
+    /* This can be either direct mode or index mode. */
+
+    /* Initialize label length. */
+    label_len = 0;
+
+    /* Read the label. */
+    while (!is_eol(c = *tok++) && isalnum(c)) {
+        /* Check if label is too long. */
+        if (label_len >= MAX_LABEL_LENGTH) {
+            report_error(fp, "label too long.");
+            return PARSE_OPERAND_BAD;
+        }
+
+        /* Append read character. */
+        op->label[label_len++] = c;
+    }
+
+    /* Unread last character. */
+    --tok;
+
+    /* Check if end of label. */
+    if (is_eol(c)) {
+        /* Check if empty label. */
+        if (label_len == 0) {
+            report_error(fp, "label is empty.");
+            return PARSE_OPERAND_BAD;
+        }
+
+        /* Apply address mode. */
+        op->addr_mode = ADDR_MODE_DIRECT;
+
+        /* Append null terminator. */
+        op->label[label_len] = 0;
+           
+        return PARSE_OPERAND_OK;
+    }
+
+    if (!isspace(c) && c != '[') {
+        /* Found non-alphanumeric character in label. */
+        report_error(fp, "invalid label (non-alphanumeric character: \'%c\').\n", c);
+        return PARSE_OPERAND_BAD;
+    }
+
+    /* Check for extraneous characters. */
+    while (!is_eol(c = *tok++) && isspace(c))
+        ;
+    if (!is_eol(c) && c != '[') {
+        /* Found extraneous character. */
+        report_error(fp, "direct addressing operand has extraneous characters.");
+        return PARSE_OPERAND_BAD;
+    }
+
+    /* Unread last character. */
+    --tok;
+
+    /* Check if we have a register subscript. */
+    if (c == '[') {
+        /* Read register index. */
+        if (sscanf(tok, "[r%d]", &reg_id) != 1) {
+            report_error(fp, "could not read register value from brackets.");
+            return PARSE_OPERAND_BAD;
+        }
+
+        /* Check if offset register is valid. */
+        if (reg_id < 0 || reg_id > 15) {
+            report_error(fp, "register value out of range: %d (must be between 0 and 15)\n", (int)op->value.reg);
+            return PARSE_OPERAND_BAD;
+        }
+
+        /* Store register ID in operand. */
+        op->value.reg = (word_t)reg_id;
+
+        /* Apply address mode. */
+        op->addr_mode = ADDR_MODE_INDEX;
+
+        return PARSE_OPERAND_OK;
+    }
+
+    /* Apply direct mode. */
+    op->addr_mode = ADDR_MODE_DIRECT;
+
+    /* Null terminate label. */
+    op->label[label_len] = '\0';
+
+    return PARSE_OPERAND_OK;
+}
+
+/**
+ * Process operands beginning at the head pointer.
+ *
+ * @note This destroys the line buffer so the line should not be
+ *       accessed afterward.
+ * @return Number of operands read or -1 on failure.
+ */
+static int process_operands(firstpass_t *fp, operand_t ops[])
+{
+    char *tok; /* Token. */
+    int nops = 0; /* Number of operands. */
+    int parse_result; /* Result returned from parse_operand. */
+
+    /* First token. */
+    tok = strtok(fp->line_head, ",");
+
+    while (tok) {
+        /* Check if too many operands. */
+        if (nops >= MAX_OPERANDS) {
+            report_error(fp, "too many operands.");
+            return -1;
+        }
+
+        /* Parse operand from token. */
+        parse_result = parse_operand(fp, tok, &ops[nops]);
+        
+        /* Check if invalid operand. */
+        if (parse_result == PARSE_OPERAND_BAD)
+            return -1;
+
+        /* See if there is another token. */
+        tok = strtok(NULL, ",");
+
+        if (parse_result == PARSE_OPERAND_EMPTY) {
+            /* If there is another operand but this one was empty then this is
+               invalid. Otherwise, the operand list is empty which is fine. */
+            return tok ? -1 : 0; 
+        }
+
+        /* Increment only after making sure the operand isn't empty. */
+        nops++;
+    }
+
+    return nops;
+}
+
+#if 0
+static void debug_print_operand(operand_t *op)
+{
+    switch (op->addr_mode) {
+    case ADDR_MODE_IMMEDIATE:
+        printf("Immediate operand: immediate=%d\n", (int)op->value.immediate);
+        break;
+    case ADDR_MODE_REGISTER_DIRECT:
+        printf("Register Direct operand: reg=r%d\n", (int)op->value.reg);
+        break;
+    case ADDR_MODE_DIRECT:
+        printf("Direct operand: label=%s\n", op->label);
+        break;
+    case ADDR_MODE_INDEX:
+        printf("Index operand label=%s register=r%d\n", op->label, (int)op->value.reg);
+        break;
+    }
+}
+#endif
+
+/**
  * Process an instruction.
  */
 static int process_instruction(firstpass_t *fp)
 {
     inst_t inst;
+    operand_t ops[MAX_OPERANDS];
+    int nops;
+    int i;
     
     /* Look up instruction name by mnemonic. */
     inst = find_inst(fp->field);
@@ -235,6 +445,15 @@ static int process_instruction(firstpass_t *fp)
         report_error(fp, "bad instruction mnemonic: %s", fp->field);
         return 1;
     }
+
+    /* Parse operands. */
+    if ((nops = process_operands(fp, ops)) < 0)
+        return 1;
+
+#if 0
+    for (i = 0; i < nops; ++i)
+        debug_print_operand(&ops[i]);
+#endif
 
     return 0;
 }

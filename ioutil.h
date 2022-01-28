@@ -26,15 +26,12 @@ int is_eol(char c);
 void read_field(char **line, char *field, int *plen);
 
 /**
- * Try to parse an operand from a token.
+ * Try to parse a number from a token.
  *
- * @details Parses an operand that matches the given addressing mode. If the
- *          operand is invalid or doesn't match the addressing mode, an error
- *          value is returned.
  * @param tok Token to parse.
- * @param addr_mode Which address mode to expect?
+ * @param w Output pointer to the number.
  * @return Zero on success, non-zero on failure.
  */
-int parse_operand(const char *tok, addr_mode_t addr_mode, operand_t *op);
+int parse_number(const char *tok, word_t *w);
 
 #endif

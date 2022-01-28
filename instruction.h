@@ -45,7 +45,7 @@
 /**
  * Maximum number of operands per instruction.
  */
-#define MAX_OPERANDS 3
+#define MAX_OPERANDS 2
 
 /**
  * Instruction code.
@@ -74,7 +74,10 @@ typedef enum {
 typedef struct {
     addr_mode_t addr_mode;
     char label[MAX_LABEL_LENGTH];
-    long value;
+    union {
+        word_t immediate;
+        word_t reg;
+    } value;
 } operand_t;
 
 /**
