@@ -29,8 +29,11 @@ void print_usage()
  */
 static int process_file(const char *basename)
 {
-    char as_filename[FILENAME_MAX + 1]; /* Source assembly file name (.as). */
-    char am_filename[FILENAME_MAX + 1]; /* Macro expanded file name (.am). */
+    /* TODO: Handle long paths correctly when using strcat. */
+
+    char as_filename[FILENAME_MAX + 1]; /* Source assembly file path (.as). */
+    char am_filename[FILENAME_MAX + 1]; /* Macro expanded file path (.am). */
+    char ob_filename[FILENAME_MAX + 1]; /* Object file path (.ob). */
     shared_t *shared; /* Shared assembly state. */
 
     /* Set input filename to basename with .as extension. */
@@ -54,6 +57,16 @@ static int process_file(const char *basename)
     /* Run first pass. */
     if (firstpass(am_filename, shared)) {
         printf("error: first pass failed, aborting.\n");
+        shared_free(shared);
+        return 1;
+    }
+
+    /* Set object file path by appending .ob extension. */
+    strcpy(ob_filename, basename);
+    strcat(ob_filename, ".ob");
+
+    /* Run second pass. */
+    if (secondpass(am_filename, ob_filename, shared)) {
         shared_free(shared);
         return 1;
     }

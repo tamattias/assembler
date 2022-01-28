@@ -707,5 +707,9 @@ int firstpass(const char *filename, struct shared *shared)
     /* Close input file. */
     fclose(in);
 
+    /* Save memory image length. */
+    shared->code_image_len = fp.ic;
+    shared->data_image_len = fp.dc;
+
     return error;
 }
