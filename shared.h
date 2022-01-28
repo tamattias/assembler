@@ -4,8 +4,8 @@
  * @brief Shared assembler state.
  */
 
-#ifndef SHARED_T
-#define SHARED_T
+#ifndef SHARED_H
+#define SHARED_H
 
 /**
  * State shared between assembly passes.
