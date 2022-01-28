@@ -246,8 +246,6 @@ static int process_line(firstpass_t *fp, char *line, shared_t *shared)
     if (next_field(fp) != 0)
         return 0; /* Skip empty line. */
 
-    printf(fp->line_head);
-
     /* Handle comment lines. */
     if (fp->field[0] == ';')
         return 0; /* Skip comment line. */
