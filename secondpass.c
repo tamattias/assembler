@@ -7,7 +7,7 @@
 #include "secondpass.h"
 #include "constants.h"
 #include "shared.h"
-#include "ioutil.h"
+#include "util.h"
 #include "symtable.h"
 #include "instset.h"
 

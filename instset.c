@@ -1,7 +1,7 @@
 /**
  * @file instset.c
  * @author Tamir Attias
- * @file Instruction set implementations.
+ * @brief Instruction set implementations.
  */
 
 #include "instset.h"

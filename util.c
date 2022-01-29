@@ -1,9 +1,10 @@
 /**
- * @file ioutil.c
+ * @file util.c
  * @author Tamir Attias
- * @brief  Impementation of I/O utilities.
+ * @brief General utility function implementations.
  */
-#include "ioutil.h"
+
+#include "util.h"
 
 #include <ctype.h>
 #include <string.h>

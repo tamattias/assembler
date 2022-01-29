@@ -6,7 +6,7 @@
 
 #include "firstpass.h"
 #include "constants.h"
-#include "ioutil.h"
+#include "util.h"
 #include "shared.h"
 #include "instset.h"
 #include "symtable.h"

@@ -1,11 +1,11 @@
 /**
- * @file ioutil.h
+ * @file util.h
  * @author Tamir Attias
- * @brief Input/output utilities.
+ * @brief General utility function declarations.
  */
 
-#ifndef IOUTIL_H
-#define IOUTIL_H
+#ifndef UTIL_H
+#define UTIL_H
 
 #include "instset.h"
 

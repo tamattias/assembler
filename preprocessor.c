@@ -8,7 +8,7 @@
 #include "constants.h"
 #include "hashtable.h"
 #include "dynstr.h"
-#include "ioutil.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <string.h>
