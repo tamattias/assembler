@@ -88,7 +88,7 @@ typedef int inst_t;
 
 /**
  * Data type used internally for representing a machine word.
- * We use a long because it is guaranteed to be at least 32-bit wide.
+ * We use a long because it is guaranteed to be at least 32 bits wide.
  */
 typedef long word_t;
 

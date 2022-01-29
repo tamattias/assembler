@@ -324,7 +324,7 @@ static parse_operand_result_t parse_operand(state_t *st, const char *tok, operan
 
     /* Check if immediate mode. */
     if (tok[0] == '#') {
-        /* Apply address mode. */
+        /* Apply addressing mode. */
         op->addr_mode = ADDR_MODE_IMMEDIATE;
 
         /* Parse immediate value. */
@@ -338,7 +338,7 @@ static parse_operand_result_t parse_operand(state_t *st, const char *tok, operan
 
     /* Check if direct register mode. */
     if (tok[0] == 'r' && parse_number(tok + 1, &op->value.reg) == 0) {
-        /* Apply address mode. */
+        /* Apply addressing mode. */
         op->addr_mode = ADDR_MODE_REGISTER_DIRECT;
 
         return PARSE_OPERAND_OK;
@@ -372,7 +372,7 @@ static parse_operand_result_t parse_operand(state_t *st, const char *tok, operan
             return PARSE_OPERAND_BAD;
         }
 
-        /* Apply address mode. */
+        /* Apply addressing mode. */
         op->addr_mode = ADDR_MODE_DIRECT;
 
         /* Append null terminator. */
@@ -419,13 +419,13 @@ static parse_operand_result_t parse_operand(state_t *st, const char *tok, operan
         /* Store register ID in operand. */
         op->value.reg = (word_t)reg_id;
 
-        /* Apply address mode. */
+        /* Apply addressing mode. */
         op->addr_mode = ADDR_MODE_INDEX;
 
         return PARSE_OPERAND_OK;
     }
 
-    /* Apply direct mode. */
+    /* Apply addressing mode. */
     op->addr_mode = ADDR_MODE_DIRECT;
 
     return PARSE_OPERAND_OK;
