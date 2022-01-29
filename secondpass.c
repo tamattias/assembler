@@ -318,31 +318,54 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     return 0;
 }
 
+/**
+ * Writes an objects file segment.
+ 
+ * @details Each group of 4 bits is encoded as a hex characters prefixed by a
+ *          letter (A-E in correspondence with the group index 1-5) and the 
+ *          groups are separated by a hyphen. Each word appears on its own
+ *          line. Additionally, each word is prefixed with its address
+ *          followed by space.
+ * @param fp File pointer to write the segment to.
+ * @param segment Memory segment to write.
+ * @param base_addr Offset that is added to each address.
+ * @param len Number of words in the segment.
+ * @return Zero on success, non-zero on failure.
+ */
 static int write_segment(FILE *fp, const word_t *segment, int base_addr, int len)
 {
     int i;
     word_t w;
 
     for (i = 0; i < len; ++i) {
-        /* Get word. */
+        /* Get next word. */
         w = segment[i];
 
-        /* Write address. */
-        fprintf(fp, "%04d ", base_addr + i);
+        /* Write its address. */
+        if (fprintf(fp, "%04d ", base_addr + i) < 0)
+            return -1;
 
         /* Encode it to file. */
-        fprintf(fp, "A%x-B%x-C%x-D%x-E%x\n",
+        if (fprintf(fp, "A%x-B%x-C%x-D%x-E%x\n",
             (unsigned)((w >> 16) & 0xF),
             (unsigned)((w >> 12) & 0xF),
             (unsigned)((w >> 8)  & 0xF),
             (unsigned)((w >> 4)  & 0xF),
             (unsigned)((w >> 0)  & 0xF)
-        );
+        ) < 0)
+            return -1;
     }
 
     return 0;
 }
 
+/**
+ * Writes objects file.
+ *
+ * @param obfilename Output path.
+ * @param shared Shared state.
+ * @return Zero on success, non-zero on failure.
+ */
 static int write_object_file(const char *obfilename, struct shared *shared)
 {
     FILE *out; /* Output file pointer. */

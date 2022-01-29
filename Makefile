@@ -16,7 +16,7 @@ DEPS := $(patsubst %.c, %.d, $(SRCS))
 OBJS := $(patsubst %.c, %.o, $(SRCS))
 
 # Phony targets.
-.PHONY: test clean
+.PHONY: docs test clean
 
 # Assembler executable target.
 assembler: $(OBJS)
