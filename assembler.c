@@ -54,7 +54,7 @@ static int process_file(const char *basename)
     }
 
     /* Allocate shared assembly state. We don't keep this on the stack because
-       the code segments are quite large. */
+       the memory segments are quite large. */
     shared = shared_alloc();
 
     /* Run first pass. */
