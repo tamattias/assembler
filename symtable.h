@@ -40,8 +40,6 @@ typedef struct {
     word_t offset;
     /** External flag. */
     int ext;
-    /** Entry flag. */
-    int ent;
     /** Code flag. */
     int code;
     /** Data flag. */

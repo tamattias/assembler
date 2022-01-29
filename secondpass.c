@@ -278,9 +278,6 @@ static int process_line(state_t *st, shared_t *shared, char *line)
             return 1;
         }
         
-        /* Mark as entry. */
-        sym->ent = 1;
-
         /* Insert to linked list of entry points. */
         insert_entrypoint(&st->entrypoints, st->field, sym->base_addr, sym->offset);
     } else {
