@@ -44,10 +44,10 @@
  */
 #define MAKE_FIRST_INST_WORD(opcode, e, r, a) \
     ( \
-        (((opcode) & 0xFFFF)) | \
-        ((e) ? (1 << 16) : 0) | \
-        ((r) ? (1 << 17) : 0) | \
-        ((a) ? (1 << 18) : 0)   \
+        ((word_t)1 << (opcode))       | \
+        ((word_t)(e) ? (1 << 16) : 0) | \
+        ((word_t)(r) ? (1 << 17) : 0) | \
+        ((word_t)(a) ? (1 << 18) : 0)   \
     )
 
 /**
@@ -70,10 +70,10 @@
  */
 #define MAKE_EXTRA_INST_WORD(value, e, r, a) \
     ( \
-        (((value) & 0xFFFF))   | \
-        ((e) ? (1 << 16) : 0)  | \
-        ((r) ? (1 << 17) : 0)  | \
-        ((a) ? (1 << 18) : 0)    \
+        (((word_t)(value) & 0xFFFF))   | \
+        ((word_t)(e) ? (1 << 16) : 0)  | \
+        ((word_t)(r) ? (1 << 17) : 0)  | \
+        ((word_t)(a) ? (1 << 18) : 0)    \
     )
 
 /**
