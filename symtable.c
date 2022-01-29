@@ -1,3 +1,9 @@
+/**
+ * @file symtable.c
+ * @author Tamir Attias
+ * @brief Symbol table implementation.
+ */
+
 #include "symtable.h"
 #include "hashtable.h"
 
@@ -15,7 +21,8 @@
 /* TODO: Use free list to improve performance? */
 
 struct symtable {
-    hashtable_t *ht; /**< Backing hash table. */
+    /** Backing hash table. */
+    hashtable_t *ht
 };
 
 symtable_t *symtable_alloc()
