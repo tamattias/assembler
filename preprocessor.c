@@ -94,6 +94,11 @@ int preprocess(const char *infilename, const char *outfilename)
             /* End of line before macro name specified. */
             if (is_eol(*head)) {
                 printf("preprocess: line %d: macro missing name, ignoring line.\n", line_no);
+                
+                /* Insert line number as a comment so that it can be used in
+                   error reporting in later stages. */
+                fprintf(out, ";#%d\n", line_no);
+
                 continue;
             }
 
@@ -103,6 +108,11 @@ int preprocess(const char *infilename, const char *outfilename)
             /* Check for extraneous text. */
             if (!is_whitespace_string(head)) {
                 printf("preprocess: line %d: extraneous text after macro name, ignoring line.\n", line_no);
+
+                /* Insert line number as a comment so that it can be used in
+                   error reporting in later stages. */
+                fprintf(out, ";#%d\n", line_no);
+
                 continue;
             }
 

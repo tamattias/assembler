@@ -142,7 +142,7 @@ static int process_label_field(state_t *st, shared_t *shared)
 
     /* Check if duplicate. */
     if (symtable_find(shared->symtable, st->label)) {
-        print_error(st, "label %s already defined; ignoring statement.", st->label);
+        print_error(st, "label %s already defined.", st->label);
         return 1;
     }
 
@@ -468,7 +468,7 @@ static parse_operand_result_t parse_operand(state_t *st, const char *tok, operan
 
         /* Check if offset register is valid. */
         if (reg_id < 0 || reg_id > 15) {
-            print_error(st, "register value out of range: %d (must be between 0 and 15)\n", (int)op->value.reg);
+            print_error(st, "register value out of range: %d (must be between 0 and 15)", reg_id);
             return PARSE_OPERAND_BAD;
         }
 

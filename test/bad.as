@@ -13,6 +13,10 @@ UNDERSCORES_ARE_NOT_ALLOWED:
 ; Empty label
 :
 
+; Duplicate label
+DUP:
+DUP:
+
 ; .extern without Label
 .extern
 
@@ -34,6 +38,17 @@ lea r2
 ; No operands.
 sub
 prn
+
+; Incorrect index addressing
+IndexedAccess:
+add IndexedAccess[rtrash], r2
+add IndexedAccess[ABCDEFG], r2
+add IndexedAccess[5.5], r2
+add IndexedAccess[r11], r2
+add IndexedAccess[r-2], r2
+
+; Invalid addressing mode
+mov r1, #5
 
 ; Space between operands
 add ABC DEF
