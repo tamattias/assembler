@@ -60,8 +60,10 @@ static char *dupstr(const char *str)
  */
 static unsigned hash(const char *key)
 {
+    /* Don't know how good this algorithm is but probably good enough. */
+
     char c;
-    unsigned hash = 7; /* Arbitrarily chosen prime number. */
+    unsigned hash = 7;
 
     while ((c = *key++) != '\0')
         hash = hash * 31 + c;
