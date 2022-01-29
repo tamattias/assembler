@@ -119,7 +119,7 @@ static int process_label_field(state_t *st, shared_t *shared)
     while ((st->label[st->label_len++] = *head++) != ':') {
         /* Check if symbol too long. */
         if (st->label_len > MAX_LABEL_LENGTH) {
-            print_error(st, "label is too long (max. %d).", MAX_LABEL_LENGTH);
+            print_error(st, "label is too long (max number of characters in a label is %d).", MAX_LABEL_LENGTH);
             return 1;
         }
 
@@ -808,7 +808,10 @@ static int process_line(state_t *st, shared_t *shared, char *line)
             sym->offset = 0;
         } else if (strcmp(st->field + 1, "entry") == 0) {
             /* Entry directives ignored in first pass. */
-        } 
+        }  else {
+            /* Unknown directive. */
+            print_error(st, "unrecognized directive %s", st->field + 1);
+        }
     } else if (!is_eol(st->field[0])) {
         /* Not a directive yet field is not empty so must be a
            instruction. */

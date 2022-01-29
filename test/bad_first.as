@@ -64,3 +64,6 @@ add #1 r2
 .string 1, 2, 3, 4
 .string "unterminated
 
+; Invalid directive
+.invalid
+

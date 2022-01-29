@@ -43,8 +43,10 @@ include $(SRCS:.c=.d)
 test: assembler
 	@echo Testing good source file.
 	./assembler test/good
-	@echo Testing bad source file.
-	-./assembler test/bad
+	@echo Testing bad first pass source file.
+	-./assembler test/bad_first
+	@echo Testing bad second pass source file.
+	-./assembler test/bad_second
 	@echo Testing example in course workbook.
 	./assembler test/ps
 
