@@ -1,0 +1,11 @@
+assembler
+*.d
+*.o
+*.am
+*.ob
+*.ext
+*.ent
+docs/
+.git/
+.gitignore
+.editorconfig

@@ -319,7 +319,7 @@ static int process_line(state_t *st, shared_t *shared, char *line)
 }
 
 /**
- * Writes an objects file segment.
+ * Writes an object file segment.
  
  * @details Each group of 4 bits is encoded as a hex characters prefixed by a
  *          letter (A-E in correspondence with the group index 1-5) and the 
@@ -360,7 +360,7 @@ static int write_segment(FILE *fp, const word_t *segment, int base_addr, int len
 }
 
 /**
- * Writes objects file.
+ * Writes object file.
  *
  * @param obfilename Output path.
  * @param shared Shared state.
