@@ -101,7 +101,6 @@ static void print_error(state_t *st, const char *fmt, ...)
  */
 static int process_label_field(state_t *st, shared_t *shared)
 {
-    int bad = 0; /* Label badly formatted? */
     const char *head = st->field;
 
     /* Reset length to 0. */
@@ -111,21 +110,16 @@ static int process_label_field(state_t *st, shared_t *shared)
         /* Check if symbol too long. */
         if (st->label_len > MAX_LABEL_LENGTH) {
             print_error(st, "label is too long (max. %d).", MAX_LABEL_LENGTH);
-            bad = 1; /* Flag symbol as bad. */
-            break;
+            return 1;
         }
 
         /* Check if alphanumeric. */
         if (!isalnum(st->label[st->label_len - 1])) {
             print_error(st, "invalid character '%c' in label (only alphanumeric characters allowed)",
                 st->label[st->label_len - 1]);
-            bad = 1; /* Flag symbol as bad. */
-            break;
+            return 1;
         }
     }
-
-    if (bad)
-        return 1;
 
     /* Check if symbol empty. */
     if (st->label_len <= 0) {
