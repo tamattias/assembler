@@ -109,11 +109,13 @@ int preprocess(const char *infilename, const char *outfilename)
             /* Enter macro state. */
             in_macro = 1;
 
-            /* Sanity check. */
-            assert(macro_buf == 0);
-            
-            /* Allocate empty macro buffer string. */
-            macro_buf = dynstr_alloc(MACRO_BUFFER_INITIAL_CAPACITY);
+            if (macro_buf) {
+                /* We already have a macro buffer so clear it. */
+                dynstr_clear(macro_buf);
+            } else {
+                /* Allocate empty macro buffer string. */
+                macro_buf = dynstr_alloc(MACRO_BUFFER_INITIAL_CAPACITY);
+            }
 
             continue;
         }
