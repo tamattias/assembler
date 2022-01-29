@@ -141,7 +141,11 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
 {
     int i; /* Counter. */
     symbol_t *sym; /* Referenced symbol. */
-    word_t *words = &shared->code_seg[data->ic]; /* Pointer to first word of instruction. */
+    word_t *words; /* Pointer to first word of instruction. */
+
+    /* We subtract 100 to get the address relative to the beginning of the
+       code segment. */
+    words = &shared->code_seg[data->address - 100];
 
     for (i = 0; i < data->num_operands; ++i) {
         /* If referenced label is empty then the operand uses direct
@@ -175,8 +179,8 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
 
         if (sym->ext) {
             /* Insert the two extra words to the externals list. */
-            insert_external(&st->externals, data->ic + 2, data->operand_symbols[i]);
-            insert_external(&st->externals, data->ic + 3, data->operand_symbols[i]);
+            insert_external(&st->externals, data->address + 2, data->operand_symbols[i]);
+            insert_external(&st->externals, data->address + 3, data->operand_symbols[i]);
         }
     }
 

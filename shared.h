@@ -17,8 +17,8 @@ struct symtable;
  * Data about an instruction encoded in the code segment.
  */ 
 typedef struct {
-    /** Address in code segment. */
-    int ic;
+    /** Address relative to beginning of object file. */
+    int address;
     /** Symbol referenced by each operand (may be empty). */
     char operand_symbols[MAX_OPERANDS][MAX_LABEL_LENGTH + 1];
     /** Number of operands. */

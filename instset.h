@@ -55,14 +55,14 @@
  */
 #define MAKE_SECOND_INST_WORD(dst_addr_mode, dst_reg, src_addr_mode, src_reg, funct, e, r, a) \
     ( \
-        ((dst_addr_mode) & 0x3)        | \
-        (((dst_reg) & 0xFF) << 2)      | \
-        (((src_addr_mode) & 0x3) << 6) | \
-        (((src_reg) & 0xFF) << 8)      | \
-        (((funct) & 0xFF) << 12)       | \
-        ((e) ? (1 << 16) : 0)          | \
-        ((r) ? (1 << 17) : 0)          | \
-        ((a) ? (1 << 18) : 0)           \
+        ((word_t)(dst_addr_mode) & 0x3)        | \
+        (((word_t)(dst_reg) & 0xFF) << 2)      | \
+        (((word_t)(src_addr_mode) & 0x3) << 6) | \
+        (((word_t)(src_reg) & 0xFF) << 8)      | \
+        (((word_t)(funct) & 0xFF) << 12)       | \
+        ((word_t)(e) ? (1 << 16) : 0)          | \
+        ((word_t)(r) ? (1 << 17) : 0)          | \
+        ((word_t)(a) ? (1 << 18) : 0)           \
     )
 
 /**

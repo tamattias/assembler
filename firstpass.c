@@ -671,7 +671,7 @@ static int process_instruction(state_t *st, shared_t *shared)
     data->num_operands = desc->noperands;
 
     /* Store instruction address before incrementing IC. */
-    data->ic = st->ic;
+    data->address = st->ic;
 
     /* Write first word (opcode). */
     shared->code_seg[shared->code_seg_len++] = MAKE_FIRST_INST_WORD(
@@ -764,8 +764,8 @@ static int process_instruction(state_t *st, shared_t *shared)
         sym = symtable_new(shared->symtable, st->label);
         assert(sym);
         sym->code = 1;
-        sym->base_addr = SYMBOL_BASE_ADDR(data->ic);
-        sym->offset = SYMBOL_OFFSET(data->ic);
+        sym->base_addr = SYMBOL_BASE_ADDR(data->address);
+        sym->offset = SYMBOL_OFFSET(data->address);
     }
 
     return 0;
