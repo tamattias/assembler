@@ -30,14 +30,19 @@ void print_usage()
  */
 static int process_file(const char *basename)
 {
-    /* TODO: Handle long paths correctly when using strcat. */
-
-    char as_filename[FILENAME_MAX + 1]; /* Source assembly file path (.as). */
-    char am_filename[FILENAME_MAX + 1]; /* Macro expanded file path (.am). */
-    char ob_filename[FILENAME_MAX + 1]; /* Object file path (.ob). */
-    char ent_filename[FILENAME_MAX + 1]; /* Entry points file path (.ent). */
-    char ext_filename[FILENAME_MAX + 1]; /* Externals file path (.ext). */
+    char as_filename[FILENAME_MAX + 1],  /* Source assembly file path (.as). */
+         am_filename[FILENAME_MAX + 1],  /* Macro expanded file path (.am). */
+         ob_filename[FILENAME_MAX + 1],  /* Object file path (.ob). */
+         ent_filename[FILENAME_MAX + 1], /* Entry points file path (.ent). */
+         ext_filename[FILENAME_MAX + 1]; /* Externals file path (.ext). */
     shared_t *shared; /* Shared assembly state. */
+
+    /* Check if filename is too long so we don't overflow the filename
+       arrays. */
+    if ((strlen(basename) + 4) > FILENAME_MAX) {
+        printf("process_file: basename %s too long.\n", basename);
+        return 1;
+    }
 
     /* Set input filename to basename with .as extension. */
     strcpy(as_filename, basename);
