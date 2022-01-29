@@ -12,7 +12,7 @@ EMPTYSTR: .string ""
 ; Integer data
 SINGLEINT: .data 1234
 SOMEDATA:  .data  -100, 55,  -230  
-.data 7, 8, 9
+.data 7 , 8 , 9
 
 ; Print hello world 3 times
 hello

@@ -59,6 +59,7 @@ add #1 r2
 
 ; Bad data
 .data 1, 2, 3, 4, hoedjevanpapier
+.data 1, 2, 3,
 
 ; Bad string
 .string 1, 2, 3, 4
