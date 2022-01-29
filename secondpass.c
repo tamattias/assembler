@@ -17,7 +17,7 @@
 #include <string.h>
 
 /**
- * An entry point in the machine code.
+ * Node in linked list of entry points.
  */
 typedef struct entrypoint {
     /** Symbol name. */
@@ -29,6 +29,20 @@ typedef struct entrypoint {
     /** Next item in list of entry points. */
     struct entrypoint *next;
 } entrypoint_t;
+
+/**
+ * Node in linked list of code words referencing external symbols.
+ */
+typedef struct external {
+    /** Base address of incomplete machine code word. */
+    word_t base_addr;
+    /** Offset from base address of incomplete machine code word. */
+    word_t offset;
+    /** Externally referenced symbol for this word. */
+    char symbol[MAX_LABEL_LENGTH + 1];
+    /** Next item in list of externals. */
+    struct external *next;
+} external_t;
 
 /**
  * Internal state for second pass.
@@ -46,6 +60,8 @@ typedef struct {
     int instruction_index;
     /** Head of entry point linked list. */
     entrypoint_t *entrypoints;
+    /** Head of externals linked list. */
+    external_t *externals;
 } state_t;
 
 /**
@@ -70,6 +86,47 @@ static int get_next_field(state_t *st)
 {
     read_field(&st->line_head, st->field, &st->field_len);
     return is_eol(*st->line_head);
+}
+
+/**
+ * Inserts an entry at the head of the externals list.
+ *
+ * @param head Pointer to head node. Will receive the new node.
+ * @param addr Address of machine code word.
+ * @param symbol External symbol referenced by the machine code word.
+ */
+static void insert_external(external_t **head, word_t addr, const char *symbol)
+{
+    /* Allocate node. */
+    external_t *node = (external_t*)malloc(sizeof(external_t));
+    
+    /* Calculate base address and offset from word address. */
+    node->base_addr = SYMBOL_BASE_ADDR(addr);
+    node->offset = SYMBOL_OFFSET(addr);
+
+    /* Copy symbol name. */
+    strcpy(node->symbol, symbol);
+
+    /* Set next pointer to head. */
+    node->next = *head;
+
+    /* Replace head with new node. */
+    *head = node;
+}
+
+/**
+ * Free externals linked list.
+ *
+ * @param head Head of list of externals to free.
+ */
+static void free_externals(external_t *head)
+{
+    external_t *cur, *next;
+
+    for (cur = head; cur; cur = next) {
+        next = cur->next;
+        free(cur);
+    }
 }
 
 /**
@@ -116,7 +173,11 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
             0                 /* A flag */
         );
 
-        /* TODO: If external, add to list of external words. */
+        if (sym->ext) {
+            /* Insert the two extra words to the externals list. */
+            insert_external(&st->externals, data->ic + 2, data->operand_symbols[i]);
+            insert_external(&st->externals, data->ic + 3, data->operand_symbols[i]);
+        }
     }
 
     return 0;
@@ -293,7 +354,7 @@ done:
 }
 
 /**
- * Writes entry points to a .entries file.
+ * Writes entry points to a .ent file.
  *
  * @param filename Output filename.
  * @param entrypoints Linked list of entry points to write.
@@ -331,6 +392,54 @@ static int write_entries_file(const char *filename, entrypoint_t *entrypoints)
     return 0;
 }
 
+/**
+ * Writes externals to a .ext file.
+ *
+ * @param filename Output filename.
+ * @param entrypoints Linked list of externals to write.
+ * @return Zero on success, non-zero on failure.
+ */
+static int write_externals_file(const char *filename, external_t *externals)
+{
+    FILE *fp; /* Output file. */
+    external_t *cur; /* Currently traversed entry. */
+    int error = 0; /* Return value. */
+
+    /* Try to open the file. */
+    if ((fp = fopen(filename, "w")) == 0) {
+        printf("error: could not open entries file %s for writing\n", filename);
+        return 1;
+    }
+
+    /* Traverse linked list of externals. */
+    for (cur = externals; cur; cur = cur->next) {
+        /* Write base address and offset in separate lines. */
+        if (fprintf(fp, "%s BASE %ld\n", cur->symbol, (long)cur->base_addr) < 0 ||
+            fprintf(fp, "%s OFFSET %ld\n", cur->symbol, (long)cur->offset) < 0) {
+            /* Report error. */
+            printf("error: could not write external with symbol %s\n",
+                cur->symbol);
+    
+            error = 1;
+            goto end; /* Exit. */
+        }
+
+        /* Empty line between entries. */
+        if (cur->next && fputc('\n', fp) == EOF) {
+            /* Error in fputc. */
+
+            error = 1;
+            goto end; /* Exit. */
+        }
+    }
+
+end:
+    /* Close output file. */
+    fclose(fp);
+
+    return error;
+}
+
 int secondpass(
     const char *infilename,
     const char *obfilename,
@@ -361,17 +470,25 @@ int secondpass(
     fclose(in);
 
     if (error == 0 && st.entrypoints != 0) {
-        /* Write .ent file. */
+        /* Write entrypoints to .ent file. */
         write_entries_file(entfilename, st.entrypoints);
 
         /* Free linked list of entry points. */
         free_entrypoints(st.entrypoints);
     }
 
-    /* Write machine code to object file. */
-    if (write_object_file(obfilename, shared) != 0)
-        return error;
+    if (error == 0 && st.externals != 0) {
+        /* Write externals to .ext file. */
+        write_externals_file(extfilename, st.externals);
 
-    return 0;
+        /* Free linked list of externals. */
+        free_externals(st.externals);
+    }
+
+    /* Write machine code to object file. */
+    if (error == 0)
+        error = write_object_file(obfilename, shared);
+
+    return error;
 }
 
