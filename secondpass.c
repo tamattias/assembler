@@ -34,10 +34,12 @@ typedef struct entrypoint {
  * Node in linked list of code words referencing external symbols.
  */
 typedef struct external {
-    /** Base address of incomplete machine code word. */
-    word_t base_addr;
-    /** Offset from base address of incomplete machine code word. */
-    word_t offset;
+    /** Address of machine code word in which to load the base address of the
+        symbol. */
+    word_t base_addr_word_addr;
+    /** Address of machine code word in which to load the offset from the base
+        address of the symbol. */
+    word_t offset_word_addr;
     /** Externally referenced symbol for this word. */
     char symbol[MAX_LABEL_LENGTH + 1];
     /** Next item in list of externals. */
@@ -78,31 +80,37 @@ static void print_error(state_t *st, const char *fmt, ...)
 }
 
 /**
- * Reads the next field and sets the eol flag if end of line reached.
+ * Reads the next field in the line.
  *
- * @return Non-zero if end of line, else zero.
+ * @param st Internal state.
  */
-static int get_next_field(state_t *st)
+static void next_field(state_t *st)
 {
     read_field(&st->line_head, st->field, &st->field_len);
-    return is_eol(*st->line_head);
 }
 
 /**
  * Inserts an entry at the head of the externals list.
  *
  * @param head Pointer to head node. Will receive the new node.
- * @param addr Address of machine code word.
+ * @param base_addr_word_addr Address of machine code word in which the base
+ *                            address of the symbol will be loaded.
+ * @param offset_word_addr Address of machine code word in which the offset
+ *                         from the base address of the symbol will be loaded.
  * @param symbol External symbol referenced by the machine code word.
  */
-static void insert_external(external_t **head, word_t addr, const char *symbol)
+static void insert_external(
+    external_t **head,
+    word_t base_addr_word_addr, 
+    word_t offset_word_addr,
+    const char *symbol)
 {
     /* Allocate node. */
     external_t *node = (external_t*)malloc(sizeof(external_t));
     
     /* Calculate base address and offset from word address. */
-    node->base_addr = SYMBOL_BASE_ADDR(addr);
-    node->offset = SYMBOL_OFFSET(addr);
+    node->base_addr_word_addr = base_addr_word_addr;
+    node->offset_word_addr = offset_word_addr;
 
     /* Copy symbol name. */
     strcpy(node->symbol, symbol);
@@ -178,9 +186,13 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
         );
 
         if (sym->ext) {
-            /* Insert the two extra words to the externals list. */
-            insert_external(&st->externals, data->address + 2, data->operand_symbols[i]);
-            insert_external(&st->externals, data->address + 3, data->operand_symbols[i]);
+            /* Store addresses of words where the symbol's base address and
+               offset should be placed. */
+            insert_external(
+                &st->externals,
+                data->address + 2,
+                data->address + 3,
+                data->operand_symbols[i]);
         }
     }
 
@@ -248,7 +260,10 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     st->line_head = line;
 
     /* First field. */
-    if (get_next_field(st) != 0)
+    next_field(st);
+
+    /* Check if first field is empty. */
+    if (st->field[0] == '\0')
         return 0; /* Skip empty line. */
 
     /* Handle comment lines. */
@@ -265,7 +280,8 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     if (st->field[st->field_len - 1] == ':') {
         /* Skip the label without checking for validity as that was already
            done in the first pass. */
-        if (get_next_field(st) != 0)
+        next_field(st);
+        if (st->field[0] == '\0')
             return 0; /* Nothing after label, ignore line. */
     }
 
@@ -275,8 +291,11 @@ static int process_line(state_t *st, shared_t *shared, char *line)
         if (strcmp(st->field + 1, "entry") != 0)
             return 0; /* Skip non .entry directives. */
 
-        /* Next field is the symbol name. */
-        if (get_next_field(st) != 0) {
+        /* Get symbol name. */
+        next_field(st);
+
+        /* Check if symbol name is empty. */
+        if (st->field[0] == '\0') {
             print_error(st, "missing symbol name in .entry directive.");
             return 1;
         }
@@ -421,8 +440,8 @@ static int write_externals_file(const char *filename, external_t *externals)
     /* Traverse linked list of externals. */
     for (cur = externals; cur; cur = cur->next) {
         /* Write base address and offset in separate lines. */
-        if (fprintf(fp, "%s BASE %ld\n", cur->symbol, (long)cur->base_addr) < 0 ||
-            fprintf(fp, "%s OFFSET %ld\n", cur->symbol, (long)cur->offset) < 0) {
+        if (fprintf(fp, "%s BASE %ld\n", cur->symbol, (long)cur->base_addr_word_addr) < 0 ||
+            fprintf(fp, "%s OFFSET %ld\n", cur->symbol, (long)cur->offset_word_addr) < 0) {
             /* Report error. */
             printf("error: could not write external with symbol %s\n",
                 cur->symbol);

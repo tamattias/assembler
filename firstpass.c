@@ -130,6 +130,7 @@ static int process_label_field(state_t *st, shared_t *shared)
     /* Overwrite ':' with a null terminator. */
     st->label[st->label_len - 1] = '\0';
 
+    /* Check if duplicate. */
     if (symtable_find(shared->symtable, st->label)) {
         print_error(st, "label %s already defined; ignoring statement.", st->label);
         return 1;
@@ -139,15 +140,13 @@ static int process_label_field(state_t *st, shared_t *shared)
 }
 
 /**
- * Reads the next field and sets the eol flag if end of line reached.
+ * Parses next field in line.
  *
  * @param st Internal state.
- * @return Non-zero if end of line, else zero.
  */
-static int get_next_field(state_t *st)
+static void next_field(state_t *st)
 {
     read_field(&st->line_head, st->field, &st->field_len);
-    return is_eol(*st->line_head);
 }
 
 /**
@@ -754,7 +753,7 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     /* Reset line head to beginning of line. */
     st->line_head = line;
 
-    get_next_field(st);
+    next_field(st);
 
     /* First field. */
     if (st->field[0] == '\0')
@@ -779,9 +778,7 @@ static int process_line(state_t *st, shared_t *shared, char *line)
         /* Labeled. */
         st->labeled = 1;
 
-        /* Next field. */
-        if (get_next_field(st) != 0)
-            return 0; /* Line has no directives/instructions. */
+        next_field(st);
     } else {
         /* Not labeled. */
         st->labeled = 0;
@@ -799,7 +796,7 @@ static int process_line(state_t *st, shared_t *shared, char *line)
                 return 1;
         } else if (strcmp(st->field + 1, "extern") == 0) {
             /* Read label. */
-            get_next_field(st); /* We don't care about end of line. */
+            next_field(st);
 
             /* Check if label is missing. */
             if (st->field[0] == '\0') {
