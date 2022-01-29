@@ -7,8 +7,6 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
-#include "constants.h"
-
 /**
  * Make a complete instruction ID from opcode and function code.
  */
