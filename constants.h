@@ -18,11 +18,6 @@
 #define MAX_LABEL_LENGTH 31
 
 /**
- * Maximum number of items in data directive integer list.
- */
-#define MAX_DATA_LENGTH 31
-
-/**
  * Maximum size of data segment in words.
  */
 #define MAX_DATA_SEGMENT_SIZE 8192
