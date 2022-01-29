@@ -116,6 +116,9 @@ void hashtable_free(hashtable_t *ht)
         }
     }
 
+    /* Free bucket list. */
+    free(ht->buckets);
+
     /* Free the hash table object. */
     free(ht);
 }
