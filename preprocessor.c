@@ -65,6 +65,23 @@ int preprocess(const char *infilename, const char *outfilename)
         /* Increment line counter. */
         ++line_no;
 
+        /* If the line fills the buffer and we haven't reached the end of file
+           then this is an overflow. */
+        if (strlen(line) >= MAX_LINE_LENGTH && !feof(in)) {
+            /* Print error. */
+            printf("preprocess: line %d is too long, ignoring.\n", line_no);
+            
+            /* Insert line number as a comment so that it can be used in
+               error reporting in later stages. */
+            fprintf(out, ";#%d\n", line_no);
+
+            /* Skip rest of line. */
+            if (skip_line(in) == EOF)
+                break; /* End-of-file. */
+
+            continue; /* Next line. */
+        }
+
         /* Set read head to beginning of line. */
         head = line;
 

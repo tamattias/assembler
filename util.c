@@ -9,6 +9,17 @@
 #include <ctype.h>
 #include <string.h>
 
+int skip_line(FILE *fp)
+{
+    int c;
+
+    /* Keep reading until end of file or newline. */
+    while ((c = getc(fp)) != EOF && c != '\n')
+        ;
+
+    return c == EOF ? EOF : 0;
+}
+
 int is_eol(char c)
 {
     return c == '\0' || c == '\r' ||c == '\n';
@@ -104,4 +115,3 @@ int parse_number(const char *tok, word_t *w)
 
     return 0;
 }
-

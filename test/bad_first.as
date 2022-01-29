@@ -4,6 +4,9 @@ macro bogus_macro
     Text inside this macro will not be used.
 endm
 
+; Test line with too many characters.
+THIS_IS_A_LINE_WITH_WAY_TOO_MANY_CHARACTERS_THAT_WILL_BE_COMPLETELY_IGNORED_BY_ALL_PASSES
+
 ; Label too long.
 THISISAWAYTOOLONGLABELCONSISTINGOFTOOMANYCHARACTERS:
 

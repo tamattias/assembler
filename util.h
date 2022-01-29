@@ -9,6 +9,8 @@
 
 #include "instset.h"
 
+#include <stdio.h> /* for FILE */
+
 /**
  * Checks whether a character terminates a line buffer i.e., if it is a newline
  * or carriage return or null terminator.
@@ -44,5 +46,13 @@ void read_field(char **line, char *field, int *plen);
  *       as an error.
  */
 int parse_number(const char *tok, word_t *w);
+
+/**
+ * Reads remainder of line until newline character or end of file.
+ *
+ * @param fp File pointer.
+ * @return Zero on success, EOF if end of file reached.
+ */
+int skip_line(FILE *fp);
 
 #endif
