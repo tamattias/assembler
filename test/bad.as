@@ -1,3 +1,9 @@
+; Insert a macro before the error statements to make sure that line numbers
+; are reported correctly after macro expansion.
+macro bogus_macro
+    Text inside this macro will not be used.
+endm
+
 ; Label too long.
 THISISAWAYTOOLONGLABELCONSISTINGOFTOOMANYCHARACTERS:
 

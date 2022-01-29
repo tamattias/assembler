@@ -78,6 +78,10 @@ int preprocess(const char *infilename, const char *outfilename)
                 hashtable_insert(macro_table, macroname, macro_buf);
                 in_macro = 0;
                 macro_buf = 0;
+
+                /* Insert line number as a comment so that it can be used in
+                   error reporting in later stages. */
+                fprintf(out, ";#%d\n", line_no);
             } else {
                 /* Not end of macro; append to macro buffer. */
                 dynstr_append(macro_buf, line);
