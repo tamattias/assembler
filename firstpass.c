@@ -94,48 +94,6 @@ static void print_error(state_t *st, const char *fmt, ...)
 }
 
 /**
- * Parses a comma separated list of integer values passed to a data directive.
- *
- * @param input Pointer to a null terminated string containing a comma
- *              separated list of integers.
- * @param data Pointer to an array of words in which to store the read
- *             data.
- * @param limit Maximum number of items that can be read into data.
- * @note Only the first MAX_LINE_LENGTH bytes of data will be scanned.
- * @return Number of integers read or -1 if invalid data.
- */
-static int read_comma_separated_data(const char *input, word_t *data, int limit)
-{
-    char tmpstr[MAX_LINE_LENGTH + 1]; /* Copy of input for tokenization. */
-    char *tok; /* Current token. */
-    word_t nval; /* Integer parsed from current token. */
-    int count = 0; /* Tokens read successfully so far. */
-    
-    /* Make a copy of the input for tokenization. */
-    strncpy(tmpstr, input, MAX_LINE_LENGTH);
-
-    /* Begin tokenization. */
-    tok = strtok(tmpstr, ",");
-    while (tok) {
-        /* Read integer from token. */
-        if (parse_number(tok, &nval) != 0)
-            return -1; /* Not integer, abort. */
-
-        /* Store in output array. */
-        data[count++] = nval;
-
-        /* Check if we read too many items. */
-        if (count > limit)
-            break;
-
-        /* Get next token. */
-        tok = strtok(NULL, ",");
-    }
-    
-    return count;
-}
-
-/**
  * Processes the first field of a labeled line.
  *
  * @param st Internal state.
@@ -196,6 +154,44 @@ static int get_next_field(state_t *st)
 {
     read_field(&st->line_head, st->field, &st->field_len);
     return is_eol(*st->line_head);
+}
+
+/**
+ * Parses a comma separated list of integer values passed to a data directive.
+ * The integers are encoded as data words into the output buffer.
+ *
+ * @param input Pointer to a null terminated string containing a comma
+ *              separated list of integers.
+ * @param data Pointer to an array of words in which to store the read
+ *             data.
+ * @note Only the first MAX_LINE_LENGTH bytes of data will be scanned.
+ * @return Number of written to data or -1 if invalid input.
+ */
+static int parse_data_array(const char *input, word_t *data)
+{
+    char tmpstr[MAX_LINE_LENGTH + 1]; /* Copy of input for tokenization. */
+    char *tok; /* Current token. */
+    word_t nval; /* Integer parsed from current token. */
+    int count = 0; /* Tokens read successfully so far. */
+    
+    /* Make a copy of the input for tokenization. */
+    strncpy(tmpstr, input, MAX_LINE_LENGTH);
+
+    /* Begin tokenization. */
+    tok = strtok(tmpstr, ",");
+    while (tok) {
+        /* Read integer from token. */
+        if (parse_number(tok, &nval) != 0)
+            return -1; /* Not integer, abort. */
+
+        /* Encode data word and store in output array. */
+        data[count++] = MAKE_DATA_WORD(nval);
+
+        /* Get next token. */
+        tok = strtok(NULL, ",");
+    }
+    
+    return count;
 }
 
 /**
@@ -281,10 +277,7 @@ static int process_data_directive(state_t *st, shared_t *shared)
     }
     
     /* Read comma separated integer values into data segment. */
-    len = read_comma_separated_data(
-        st->line_head,
-        shared->data_seg + shared->data_seg_len,
-        MAX_DATA_LENGTH);
+    len = parse_data_array(st->line_head, shared->data_seg + shared->data_seg_len);
 
     /* Check if bad data. */
     if (len == -1) {
@@ -321,6 +314,7 @@ static int process_data_directive(state_t *st, shared_t *shared)
  *
  * @param st Internal state.
  * @param shared Shared state.
+ * @return Zero on success, non-zero on failure.
  */
 static int process_string_directive(state_t *st, shared_t *shared)
 {
@@ -350,7 +344,7 @@ static int process_string_directive(state_t *st, shared_t *shared)
     /* Copy string into data segment, incrementing the data segment length for
        every character (word) written. */
     while ((c = *st->line_head++) != '\0' && c != '"')
-        shared->data_seg[shared->data_seg_len++] = c;
+        shared->data_seg[shared->data_seg_len++] = MAKE_DATA_WORD(c);
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
@@ -359,7 +353,7 @@ static int process_string_directive(state_t *st, shared_t *shared)
     }
 
     /* Append null terminator. */
-    shared->data_seg[shared->data_seg_len++] = '\0';
+    shared->data_seg[shared->data_seg_len++] = MAKE_DATA_WORD('\0');
 
     /* Add symbol if labeled. */
     if (st->labeled) {

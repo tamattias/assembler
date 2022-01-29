@@ -77,6 +77,11 @@
     )
 
 /**
+ * Makes a data segment word.
+ */
+#define MAKE_DATA_WORD(datum) (((word_t)(datum) & 0xFFFF) | (1 << 18))
+
+/**
  * Maximum number of operands per instruction.
  */
 #define MAX_OPERANDS 2
