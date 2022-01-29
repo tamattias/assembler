@@ -4,7 +4,7 @@
  * @file Instruction set implementations.
  */
 
-#include "instruction.h"
+#include "instset.h"
 
 #include <string.h>
 

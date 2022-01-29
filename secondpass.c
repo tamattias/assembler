@@ -9,7 +9,7 @@
 #include "shared.h"
 #include "ioutil.h"
 #include "symtable.h"
-#include "instruction.h"
+#include "instset.h"
 
 #include <stdio.h>
 #include <stdarg.h>

@@ -8,7 +8,7 @@
 #include "constants.h"
 #include "ioutil.h"
 #include "shared.h"
-#include "instruction.h"
+#include "instset.h"
 #include "symtable.h"
 
 #include <stdio.h>

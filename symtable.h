@@ -8,7 +8,7 @@
 #define SYMTABLE_H
 
 #include "constants.h"
-#include "instruction.h"
+#include "instset.h"
 
 /**
  * Computes the base address for a symbol from an address.

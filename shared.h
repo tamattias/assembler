@@ -7,7 +7,7 @@
 #ifndef SHARED_H
 #define SHARED_H
 
-#include "instruction.h"
+#include "instset.h"
 #include "constants.h"
 
 /* Forward declaration. */

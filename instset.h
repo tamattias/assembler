@@ -1,5 +1,5 @@
 /**
- * @file instruction.h
+ * @file instset.h
  * @author Tamir Attias
  * @brief Instruction set declarations.
  */

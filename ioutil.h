@@ -7,7 +7,7 @@
 #ifndef IOUTIL_H
 #define IOUTIL_H
 
-#include "instruction.h"
+#include "instset.h"
 
 /**
  * Checks whether a character terminates a line buffer i.e., if it is a newline
