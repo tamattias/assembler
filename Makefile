@@ -1,21 +1,42 @@
+#
+# Assembler Makefile
+# Author: Tamir Attias
+#
+
+# Compiler flags.
 CFLAGS := -Wall -ansi -pedantic -g
+
+# Source files.
 SRCS := $(wildcard *.c)
+
+# Dependency files.
 DEPS := $(patsubst %.c, %.d, $(SRCS))
+
+# Object files.
 OBJS := $(patsubst %.c, %.o, $(SRCS))
 
+# Phony targets.
 .PHONY: test clean
 
+# Assembler executable target.
 assembler: $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
+# Include dependency files.
 include $(SRCS:.c=.d)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+#
+# The recipe generates a dependency Makefile for each source file.
+# Taken from the GNU Makefile manual.
+# See https://www.gnu.org/software/make/manual/html_node/Automatic-Prerequisites.html
+# CPPFLAGS was changes to CFLAGS.
+#
 %.d: %.c
 	@set -e; rm -f $@; \
-	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	$(CC) -M $(CFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
@@ -27,6 +48,7 @@ test: assembler
 	@echo Testing example in course workbook.
 	./assembler test/ps
 
+# Target for easy debugging with GDB.
 debug: assembler
 	gdb -ex run --args ./assembler test/ps
 
