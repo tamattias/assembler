@@ -8,9 +8,9 @@
 #define INSTSET_H
 
 /**
- * Make a complete instruction ID from opcode and function code.
+ * Pack an opcode and funct to a single value.
  */
-#define MAKE_INST(opcode, funct) (((opcode) & 0xF) | ((funct) << 4))
+#define MAKE_INST(opcode, funct) ((inst_t)((opcode) & 0xF) | (inst_t)((funct) << 4))
 
 /**
  * Extracts opcode from instruction.
