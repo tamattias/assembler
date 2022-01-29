@@ -16,7 +16,7 @@
 #include <assert.h>
 
 /* Number of characters to pre-allocate for macros. */
-#define MACRO_BUFFER_INITIAL_CAPACITY 16
+#define MACRO_BUFFER_INITIAL_CAPACITY 256
 
 /* Number of buckets in macro hash table. */
 #define MACRO_TABLE_BUCKET_COUNT 1024
