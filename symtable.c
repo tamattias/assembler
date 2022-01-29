@@ -18,8 +18,6 @@
  */
 #define SYMTABLE_SLOTS 4096
 
-/* TODO: Use free list to improve performance? */
-
 struct symtable {
     /** Backing hash table. */
     hashtable_t *ht;

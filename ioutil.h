@@ -16,6 +16,15 @@
 int is_eol(char c);
 
 /**
+ * Checks whether a string has only whitespace characters.
+ *
+ * @param str Null terminated string to check.
+ * @return Non-zero if the string has only whitespace characters or if the
+ *         string is empty, else zero.
+ */
+int is_whitespace_string(const char *str);
+
+/**
  * Reads the next field from a line.
  * 
  * @param line Pointer to line buffer, will be incremented by the amount of

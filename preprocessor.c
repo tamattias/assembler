@@ -31,6 +31,7 @@ int preprocess(const char *infilename, const char *outfilename)
 {
     FILE *in, *out; /* Input, output file pointers. */
     char line[MAX_LINE_LENGTH + 1]; /* Line buffer. */
+    int line_no = 0; /* Line number. */
     char *head; /* Pointer to current byte in line being processed. */
     char field[MAX_LINE_LENGTH + 1]; /* Field buffer. */
     int in_macro; /* Non-zero if within a macro definition. */
@@ -42,7 +43,7 @@ int preprocess(const char *infilename, const char *outfilename)
     /* Open input file. */
     in = fopen(infilename, "r");
     if (!in) {
-        printf("preprocess: couldn't open file: %s\n", infilename);
+        printf("preprocess: couldn't open input file: %s\n", infilename);
         return 1;
     }
 
@@ -61,6 +62,9 @@ int preprocess(const char *infilename, const char *outfilename)
 
     /* Read input file line by line. */
     while (fgets(line, sizeof(line), in)) {
+        /* Increment line counter. */
+        ++line_no;
+
         /* Set read head to beginning of line. */
         head = line;
 
@@ -85,14 +89,18 @@ int preprocess(const char *infilename, const char *outfilename)
         if (strcmp(field, "macro") == 0) {
             /* End of line before macro name specified. */
             if (is_eol(*head)) {
-                printf("preprocess: macro missing name.\n");
-                break;
+                printf("preprocess: line %d: macro missing name, ignoring line.\n", line_no);
+                continue;
             }
 
             /* Read macro name. */
             read_field(&head, macroname, 0);
 
-            /* TODO: Check for extra fields? Report error? */
+            /* Check for extraneous text. */
+            if (!is_whitespace_string(head)) {
+                printf("preprocess: line %d: extraneous text after macro name, ignoring line.\n", line_no);
+                continue;
+            }
 
             /* Enter macro state. */
             in_macro = 1;
@@ -106,15 +114,16 @@ int preprocess(const char *infilename, const char *outfilename)
             continue;
         }
 
-        /* Macro not declared, check if first field in line is a macro
-           reference. */
+        /* Not a macro declaration. */
+
+        /* Check if first field in line is a macro reference. */
         if ((macro = (dynstr_t*)hashtable_find(macro_table, field)) != 0) {
             /* Write macro contents to output file. */
             fwrite(dynstr_pointer(macro), 1, dynstr_size(macro), out);
             continue;
         }
 
-        /* Not a macro, copy line as is to output. */
+        /* Not a macro reference. Copy line as is to output. */
         fputs(line, out);
     }
 

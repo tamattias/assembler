@@ -789,14 +789,16 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     /* Reset line head to beginning of line. */
     st->line_head = line;
 
+    get_next_field(st);
+
     /* First field. */
-    if (get_next_field(st) != 0)
+    if (st->field[0] == '\0')
         return 0; /* Skip empty line. */
 
     /* Handle comment lines. */
     if (st->field[0] == ';')
         return 0; /* Skip comment line. */
-
+    
     /* Check if first field is a label. */
     if (st->field[st->field_len - 1] == ':') {
         /* Try to read as label. */

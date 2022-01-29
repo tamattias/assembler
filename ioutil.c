@@ -13,6 +13,17 @@ int is_eol(char c)
     return c == '\0' || c == '\n';
 }
 
+int is_whitespace_string(const char *str)
+{
+    /* Go through every whitespace character and return 1 if
+       end of string is reached without encountering a non-whitespace
+       character. */
+    char c;
+    while ((c = *str++) != '\0' && isspace(c))
+        ;
+    return c == '\0';
+}
+
 void read_field(char **line, char *field, int *plen)
 {
     char c;
