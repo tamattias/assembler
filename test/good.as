@@ -20,9 +20,8 @@ hello
 hello
 
 ; Test external string
-LabeledExternal: .extern  ExternalText 
+IgnoredLabel: .extern  ExternalText 
 prn ExternalText
-prn LabeledExternal
 
 ; Number at end of line.
 prn #42

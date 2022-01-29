@@ -816,16 +816,14 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     } else {
         /* End of line after first field, must be empty label. */
         assert(st->labeled);
-    }
 
-    /* If we made it here then we need to insert a label as it wasn't handled
-       by one of the process_* functions. */
-    if (st->labeled) {
-        /* Try to allocate a symbol. */
-        sym = symtable_new(shared->symtable, st->label);
-        assert(sym);
-        sym->base_addr = SYMBOL_BASE_ADDR(st->ic);
-        sym->offset = SYMBOL_OFFSET(st->ic);
+        if (st->labeled) {
+            /* Try to allocate a symbol. */
+            sym = symtable_new(shared->symtable, st->label);
+            assert(sym);
+            sym->base_addr = SYMBOL_BASE_ADDR(st->ic);
+            sym->offset = SYMBOL_OFFSET(st->ic);
+        }
     }
 
     return 0;

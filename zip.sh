@@ -9,4 +9,8 @@
     assembler/*.c \
     assembler/*.h \
     assembler/test/*.as \
+    assembler/test/*.am \
+    assembler/test/*.ob \
+    assembler/test/*.ext \
+    assembler/test/*.ent \
     assembler/Makefile)
