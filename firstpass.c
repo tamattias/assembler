@@ -12,12 +12,23 @@
 #include "symtable.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
 
 /* TODO: Handle cases of segment overflow (data/instruction). */
+
+/**
+ * Node in a linked list of data symbols.
+ */
+typedef struct datasym {
+    /** Symbol. */
+    symbol_t *sym;
+    /** Next node. */
+    struct datasym *next;
+} datasym_t;
 
 /**
  * Internal state for first pass.
@@ -41,6 +52,8 @@ typedef struct {
     char label[MAX_LABEL_LENGTH + 1];
     /** Length of label of current line. */
     int label_len;
+    /** Head of linked list of data symbols. */
+    datasym_t *data_symbols;
 } state_t;
 
 /**
@@ -191,6 +204,63 @@ static int get_next_field(state_t *st)
 }
 
 /**
+ * Inserts a symbol at the head of a linked list of data symbols.
+ *
+ * @param head Pointer to head node in list. Will be modified.
+ * @param sym Symbol to insert.
+ */
+static void insert_data_symbol(datasym_t **head, symbol_t *sym)
+{
+    /* Allocate data symbol. */
+    datasym_t *node = malloc(sizeof(datasym_t));
+
+    /* Set symbol. */
+    node->sym = sym;
+
+    /* Make next pointer point to old head and replace head with new node. */
+    node->next = *head;
+    *head = node;
+}
+
+/**
+ * Frees a linked list of data symbols.
+ *
+ * @param head Head node.
+ */
+static void free_data_symbols(datasym_t *head)
+{
+    datasym_t *cur, *next;
+
+    for (cur = head; cur; cur = next) {
+        next = cur->next;
+        free(cur);
+    }
+}
+
+/**
+ * Recalculate addresses of data symbols using the code segment length as an
+ * offset. This is needed because the data segment appears directly after the
+ * code segment in the object file.
+ *
+ * @param head Head of linked list to update.
+ * @param offset Word offset at which data segment starts in object file.
+ */
+static void update_data_symbols(datasym_t *head, word_t offset)
+{
+    datasym_t *cur; /* Current node. */
+    word_t new_address; /* Recalculated address of symbol. */
+    
+    for (cur = head; cur; cur = cur->next) {
+        /* Calculate new address. */
+        new_address = offset + cur->sym->base_addr + cur->sym->offset;
+
+        /* Set new base address and offset. */
+        cur->sym->base_addr = SYMBOL_BASE_ADDR(new_address);
+        cur->sym->offset = SYMBOL_OFFSET(new_address);
+    }
+}
+
+/**
  * Process data after a .data directive.
  *
  * @param st Internal state.
@@ -240,6 +310,9 @@ static int process_data_directive(state_t *st, shared_t *shared)
         sym->data = 1;
         sym->base_addr = SYMBOL_BASE_ADDR(st->dc);
         sym->offset = SYMBOL_OFFSET(st->dc);
+
+        /* Insert to linked list of data symbols. */
+        insert_data_symbol(&st->data_symbols, sym);
     }
 
     /* Increment data counter. */
@@ -300,6 +373,9 @@ static int process_string_directive(state_t *st, shared_t *shared)
         sym->data = 1;
         sym->base_addr = SYMBOL_BASE_ADDR(addr);
         sym->offset = SYMBOL_OFFSET(addr);
+
+        /* Insert to linked list of data symbols. */
+        insert_data_symbol(&st->data_symbols, sym);
     }
 
     return 0;
@@ -801,6 +877,9 @@ int firstpass(const char *filename, struct shared *shared)
     /* Zero initialize internal state. */
     memset(&st, 0, sizeof(st));
 
+    /* Code segment is loaded at 100 so initialize IC to 100. */
+    st.ic = 100;
+
     /* Process file line by line. */
     while (fgets(line, sizeof(line), in))
         error |= process_line(&st, shared, line);
@@ -811,6 +890,10 @@ int firstpass(const char *filename, struct shared *shared)
     /* Save segment lengths. */
     shared->code_seg_len = st.ic;
     shared->data_seg_len = st.dc;
+
+    /* Update data symbol addresses and free the list of data symbols. */
+    update_data_symbols(st.data_symbols, st.ic);
+    free_data_symbols(st.data_symbols);
 
     return error;
 }
