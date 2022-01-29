@@ -14,7 +14,7 @@
 #include <string.h>
 
 /**
- * Print friendly usage intstructions.
+ * Print friendly usage instructions.
  */
 void print_usage()
 {
