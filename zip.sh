@@ -13,4 +13,5 @@
     assembler/test/*.ob \
     assembler/test/*.ext \
     assembler/test/*.ent \
+    assembler/screenshots/*.png \
     assembler/Makefile)
