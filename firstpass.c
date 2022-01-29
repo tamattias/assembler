@@ -544,26 +544,6 @@ static int process_operands(state_t *st, operand_t ops[])
     return nops;
 }
 
-#if 0
-static void debug_print_operand(operand_t *op)
-{
-    switch (op->addr_mode) {
-    case ADDR_MODE_IMMEDIATE:
-        printf("Immediate operand: immediate=%d\n", (int)op->value.immediate);
-        break;
-    case ADDR_MODE_REGISTER_DIRECT:
-        printf("Register Direct operand: reg=r%d\n", (int)op->value.reg);
-        break;
-    case ADDR_MODE_DIRECT:
-        printf("Direct operand: label=%s\n", op->label);
-        break;
-    case ADDR_MODE_INDEX:
-        printf("Index operand label=%s register=r%d\n", op->label, (int)op->value.reg);
-        break;
-    }
-}
-#endif
-
 /**
  * Converts an addressing mode to its machine code representation.
  *
