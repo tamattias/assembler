@@ -16,9 +16,6 @@ UNDERSCORES_ARE_NOT_ALLOWED:
 ; .extern without Label
 .extern
 
-; .entry without label
-.entry
-
 ; Macro with extraneous text
 macro one two
 endm
@@ -37,3 +34,10 @@ lea r2
 ; No operands.
 sub
 prn
+
+; Space between operands
+add ABC DEF
+add r1 r2
+add #1 #2
+add r2 #1
+add #1 r2
