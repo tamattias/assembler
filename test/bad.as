@@ -10,6 +10,15 @@ THISISAWAYTOOLONGLABELCONSISTINGOFTOOMANYCHARACTERS:
 ; Label has invalid characters.
 UNDERSCORES_ARE_NOT_ALLOWED:
 
+; Empty label
+:
+
+; .extern without Label
+.extern
+
+; .entry without label
+.entry
+
 ; Macro with extraneous text
 macro one two
 endm
@@ -27,4 +36,4 @@ lea r2
 
 ; No operands.
 sub
-
+prn

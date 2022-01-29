@@ -132,7 +132,7 @@ static int process_label_field(state_t *st, shared_t *shared)
     }
 
     /* Check if symbol empty. */
-    if (st->label_len <= 0) {
+    if (st->label[0] == ':') {
         print_error(st, "label is empty.");
         return 1;
     }
