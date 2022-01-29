@@ -11,7 +11,7 @@
 
 /**
  * Checks whether a character terminates a line buffer i.e., if it is a newline
- * or null terminator.
+ * or carriage return or null terminator.
  */
 int is_eol(char c);
 

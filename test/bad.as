@@ -14,6 +14,9 @@ UNDERSCORES_ARE_NOT_ALLOWED:
 macro one two
 endm
 
+; Instruction doesn't exist
+garbage
+
 ; Too many operands.
 add r1, r2, #3
 stop #100

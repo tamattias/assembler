@@ -11,7 +11,7 @@
 
 int is_eol(char c)
 {
-    return c == '\0' || c == '\n';
+    return c == '\0' || c == '\r' ||c == '\n';
 }
 
 int is_whitespace_string(const char *str)
@@ -93,7 +93,7 @@ int parse_number(const char *tok, word_t *w)
     }
     
     /* Check if last character was not a digit. */
-    if (!isdigit(c))
+    if (!is_eol(c))
         return -1;
 
     /* Unread last non-digit character. */
