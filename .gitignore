@@ -1,4 +1,3 @@
-.vscode/
 assembler
 *.d
 *.o
@@ -6,3 +5,5 @@ assembler
 *.ob
 *.ent
 *.ext
+.vscode/
+docs/
