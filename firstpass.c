@@ -64,9 +64,9 @@ typedef struct {
  * Return values for parse_operand.
  */
 typedef enum {
-    PARSE_OPERAND_OK,   /** Operand parsed successfully. */
-    PARSE_OPERAND_BAD,  /** Token was not a valid operand. */
-    PARSE_OPERAND_EMPTY /** Token was blank. */
+    PARSE_OPERAND_OK,   /**< Operand parsed successfully. */
+    PARSE_OPERAND_BAD,  /**< Token was not a valid operand. */
+    PARSE_OPERAND_EMPTY /**< Token was blank. */
 } parse_operand_result_t;
 
 /**
