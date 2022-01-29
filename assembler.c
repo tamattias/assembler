@@ -28,7 +28,7 @@ void print_usage()
  * @param basename Path to the source file to process without extension.
  * @return Zero on success, non-zero on failure.
  */
-static int process_file(const char *basename)
+static int assemble(const char *basename)
 {
     char as_filename[FILENAME_MAX + 1],  /* Source assembly file path (.as). */
          am_filename[FILENAME_MAX + 1],  /* Macro expanded file path (.am). */
@@ -40,7 +40,7 @@ static int process_file(const char *basename)
     /* Check if filename is too long so we don't overflow the filename
        arrays. */
     if ((strlen(basename) + 4) > FILENAME_MAX) {
-        printf("process_file: basename %s too long.\n", basename);
+        printf("assemble: basename %s too long.\n", basename);
         return 1;
     }
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     /* Process all file basenames in the second argument onward and note when 
        a file fails to process for the exit code. */
     while (*++argv)
-        error |= process_file(*argv);
+        error |= assemble(*argv);
 
     return error;
 }
