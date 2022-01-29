@@ -32,7 +32,7 @@ include $(SRCS:.c=.d)
 # The recipe generates a dependency Makefile for each source file.
 # Taken from the GNU Makefile manual.
 # See https://www.gnu.org/software/make/manual/html_node/Automatic-Prerequisites.html
-# CPPFLAGS was changes to CFLAGS.
+# CPPFLAGS was changed to CFLAGS.
 #
 %.d: %.c
 	@set -e; rm -f $@; \
