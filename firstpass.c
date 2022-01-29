@@ -288,7 +288,6 @@ static int process_data_directive(state_t *st, shared_t *shared)
     if (st->labeled) {
         sym = symtable_new(shared->symtable, st->label);
         assert(sym);
-        sym->data = 1;
         sym->base_addr = SYMBOL_BASE_ADDR(shared->data_seg_len);
         sym->offset = SYMBOL_OFFSET(shared->data_seg_len);
 
@@ -352,7 +351,6 @@ static int process_string_directive(state_t *st, shared_t *shared)
     if (st->labeled) {
         sym = symtable_new(shared->symtable, st->label);
         assert(sym);
-        sym->data = 1;
         sym->base_addr = SYMBOL_BASE_ADDR(addr);
         sym->offset = SYMBOL_OFFSET(addr);
 
@@ -727,7 +725,6 @@ static int process_instruction(state_t *st, shared_t *shared)
         /* Make a symbol for the instruction. */
         sym = symtable_new(shared->symtable, st->label);
         assert(sym);
-        sym->code = 1;
         sym->base_addr = SYMBOL_BASE_ADDR(data->address);
         sym->offset = SYMBOL_OFFSET(data->address);
     }
@@ -788,12 +785,10 @@ static int process_line(state_t *st, shared_t *shared, char *line)
         /* Process directives. */
         if (strcmp(st->field + 1, "data") == 0) {
             /* Data directive. */
-            if (process_data_directive(st, shared))
-                return 1;
+            return process_data_directive(st, shared);
         } else if (strcmp(st->field + 1, "string") == 0) {
             /* String directive. */
-            if (process_string_directive(st, shared))
-                return 1;
+            return process_string_directive(st, shared);
         } else if (strcmp(st->field + 1, "extern") == 0) {
             /* Read label. */
             next_field(st);
@@ -817,16 +812,18 @@ static int process_line(state_t *st, shared_t *shared, char *line)
     } else if (!is_eol(st->field[0])) {
         /* Not a directive yet field is not empty so must be a
            instruction. */
-        if (process_instruction(st, shared) != 0)
-            return 1;
+        return process_instruction(st, shared);
     } else {
         /* End of line after first field, must be empty label. */
         assert(st->labeled);
+    }
 
+    /* If we made it here then we need to insert a label as it wasn't handled
+       by one of the process_* functions. */
+    if (st->labeled) {
         /* Try to allocate a symbol. */
         sym = symtable_new(shared->symtable, st->label);
         assert(sym);
-        sym->code = 1;
         sym->base_addr = SYMBOL_BASE_ADDR(st->ic);
         sym->offset = SYMBOL_OFFSET(st->ic);
     }

@@ -40,10 +40,6 @@ typedef struct {
     word_t offset;
     /** External flag. */
     int ext;
-    /** Code flag. */
-    int code;
-    /** Data flag. */
-    int data;
 } symbol_t;
 
 typedef struct symtable symtable_t;
