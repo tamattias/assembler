@@ -126,40 +126,32 @@ void hashtable_free(hashtable_t *ht)
 int hashtable_insert(hashtable_t *ht, const char *key, void *item)
 {
     unsigned index; /* Bucket index. */
-    bucketnode_t *node, *new_node; /* Current node, new node. */
+    bucketnode_t *node; /* New node. */
 
     /* Calculate hash and then bucket index from it. */
     index = hash(key) % (unsigned)ht->capacity;
 
     /* Try to allocate a new node. */
-    if ((new_node = (bucketnode_t*)malloc(sizeof(bucketnode_t))) == 0) {
+    if ((node = (bucketnode_t*)malloc(sizeof(bucketnode_t))) == 0) {
         /* Out of memory. */
         return 1;
     }
 
     /* Duplicate key and store in new node. */
-    if ((new_node->key = dupstr(key)) == 0) {
+    if ((node->key = dupstr(key)) == 0) {
         /* Out of memory. */
-        free(new_node); /* Free the new node. */
+        free(node); /* Free the new node. */
         return 1;
     }
 
-    new_node->next = 0; /* Tail of list, null next pointer */
-    new_node->item = item; /* Store item. */
+    /* Store item in new node. */
+    node->item = item;
 
-    /* Find tail of bucket. */
-    for (node = ht->buckets[index]; node && node->next; node = node->next)
-        ;
+    /* Make current head the next pointer of the new node. */
+    node->next = ht->buckets[index];
 
-    if (node) {
-        /* Bucket is not empty, allocate new node at tail. */
-        node->next = new_node;
-        node = node->next;
-    } else {
-        /* Bucket is empty, create head node. */
-        ht->buckets[index] = new_node;
-        node = ht->buckets[index];
-    }
+    /* Make the new node the head of the list. */
+    ht->buckets[index] = node;
     
     return 0;
 }
