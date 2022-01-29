@@ -348,14 +348,14 @@ static int process_string_directive(state_t *st, shared_t *shared)
     /* Copy string into data segment, incrementing the data segment length for
        every character (word) written. */
     while ((c = *st->line_head++) != '\0' && c != '"') {
-        shared->data_seg[shared->data_seg_len++] = MAKE_DATA_WORD(c);
-
-        /* Check if out of data segment space. We add 1 to cover the
-           null terminator. */
+        /* Check if have enough space for another word, also account for null
+           terminator. */
         if ((shared->data_seg_len + 1) >= MAX_DATA_SEGMENT_LEN) {
             print_error(st, "data overflow; no more room in data segment.");
             return 1;
         }
+
+        shared->data_seg[shared->data_seg_len++] = MAKE_DATA_WORD(c);
     }
 
     /* Check if string is improperly terminated. */
