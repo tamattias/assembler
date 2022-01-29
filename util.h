@@ -39,7 +39,9 @@ void read_field(char **line, char *field, int *plen);
  *
  * @param tok Token to parse.
  * @param w Output pointer to the number.
- * @return Zero on success, non-zero on failure.
+ * @return Zero on success, non-zero on error.
+ * @note Extraneous (non-whitespace) characters after the number are treated
+ *       as an error.
  */
 int parse_number(const char *tok, word_t *w);
 

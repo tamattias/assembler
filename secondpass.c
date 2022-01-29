@@ -165,7 +165,7 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
         words[2] = MAKE_EXTRA_INST_WORD(
             sym->base_addr,   /* Value */
             sym->ext ? 1 : 0, /* E flag */
-            1,                /* R flag */
+            sym->ext ? 0 : 1, /* R flag */
             0                 /* A flag */
         );
 
@@ -173,7 +173,7 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
         words[3] = MAKE_EXTRA_INST_WORD(
             sym->offset,      /* Value */
             sym->ext ? 1 : 0, /* E flag */
-            1,                /* R flag */
+            sym->ext ? 0 : 1, /* R flag */
             0                 /* A flag */
         );
 

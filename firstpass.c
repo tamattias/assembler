@@ -118,10 +118,7 @@ static int read_comma_separated_data(const char *input, word_t *data, int limit)
     tok = strtok(tmpstr, ",");
     while (tok) {
         /* Read integer from token. */
-        /* TODO: Make sure this only allows decimal numbers (not hex etc.) */
-        /* TODO: Don't allow whitespace separated values between commas. */
-        /* TODO: Use parse_number instead? */
-        if (sscanf(tok, "%ld", &nval) != 1)
+        if (parse_number(tok, &nval) != 0)
             return -1; /* Not integer, abort. */
 
         /* Store in output array. */
