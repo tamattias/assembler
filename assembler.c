@@ -30,16 +30,16 @@ void print_usage()
  */
 static int assemble(const char *basename)
 {
-    char as_filename[FILENAME_MAX + 1],  /* Source assembly file path (.as). */
-         am_filename[FILENAME_MAX + 1],  /* Macro expanded file path (.am). */
-         ob_filename[FILENAME_MAX + 1],  /* Object file path (.ob). */
-         ent_filename[FILENAME_MAX + 1], /* Entry points file path (.ent). */
-         ext_filename[FILENAME_MAX + 1]; /* Externals file path (.ext). */
+    char as_filename[FILENAME_MAX],  /* Source assembly file path (.as). */
+         am_filename[FILENAME_MAX],  /* Macro expanded file path (.am). */
+         ob_filename[FILENAME_MAX],  /* Object file path (.ob). */
+         ent_filename[FILENAME_MAX], /* Entry points file path (.ent). */
+         ext_filename[FILENAME_MAX]; /* Externals file path (.ext). */
     shared_t *shared; /* Shared assembly state. */
 
     /* Check if filename is too long so we don't overflow the filename
        arrays. */
-    if ((strlen(basename) + 4) > FILENAME_MAX) {
+    if ((strlen(basename) + 3) > FILENAME_MAX) {
         printf("assemble: basename %s too long.\n", basename);
         return 1;
     }
