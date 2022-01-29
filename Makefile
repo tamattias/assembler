@@ -52,5 +52,9 @@ test: assembler
 debug: assembler
 	gdb -ex run --args ./assembler test/ps
 
+# Generate documentation using Doxygen
+docs:
+	doxygen
+
 clean:
-	-rm -rf assembler *.o *.d
+	-rm -rf assembler *.o *.d docs/
