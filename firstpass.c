@@ -155,7 +155,7 @@ static int process_label_field(state_t *st, shared_t *shared)
     while ((st->label[st->label_len++] = *head++) != ':') {
         /* Check if symbol too long. */
         if (st->label_len > MAX_LABEL_LENGTH) {
-            print_error(st, "label is too long (%d chars, max. %d).", st->label_len, MAX_LABEL_LENGTH);
+            print_error(st, "label is too long (max. %d).", MAX_LABEL_LENGTH);
             bad = 1; /* Flag symbol as bad. */
             break;
         }

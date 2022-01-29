@@ -20,6 +20,11 @@ include $(SRCS:.c=.d)
 	rm -f $@.$$$$
 
 test: assembler
+	@echo Testing good source file.
+	./assembler test/good
+	@echo Testing bad source file.
+	-./assembler test/bad
+	@echo Testing example in course workbook.
 	./assembler test/ps
 
 debug: assembler
