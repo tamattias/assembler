@@ -14,26 +14,37 @@
 struct symtable;
 
 /**
- * Data about an instruction stored in the code segment.
+ * Data about an instruction encoded in the code segment.
  */ 
 typedef struct {
-    int ic; /** Address in code segment. */
-    int l;  /** Number of words occupied by the instruction. */
-    char operand_symbols[MAX_OPERANDS][MAX_LABEL_LENGTH + 1]; /** Symbol referenced by each operand (may be empty). */
-    int num_operands; /** Number of operands. */
+    /** Address in code segment. */
+    int ic;
+    /** Number of words occupied by the instruction. */
+    int l;
+    /** Symbol referenced by each operand (may be empty). */
+    char operand_symbols[MAX_OPERANDS][MAX_LABEL_LENGTH + 1];
+    /** Number of operands. */
+    int num_operands;
 } inst_data_t;
 
 /**
  * State shared between assembly passes.
  */
 typedef struct shared {
-    word_t data_seg[MAX_DATA_SEGMENT_SIZE]; /** Data image. */
-    int data_seg_len; /** Length of data image in words. */
-    word_t code_seg[MAX_CODE_SEGMENT_SIZE]; /** Machine code segment. */
-    int code_seg_len; /** Length of code segment in words. */
-    inst_data_t instructions[MAX_CODE_SEGMENT_SIZE]; /** Data about instructions in code segment. */
-    int instruction_count; /** Number of instructions in code segment. */
-    struct symtable *symtable; /** Symbol table. */
+    /** Data segment. */
+    word_t data_seg[MAX_DATA_SEGMENT_SIZE];
+    /** Length of data segment in words. */
+    int data_seg_len;
+    /** Machine code segment. */
+    word_t code_seg[MAX_CODE_SEGMENT_SIZE];
+    /** Length of code segment in words. */
+    int code_seg_len;
+    /** Data about instructions in code segment. */
+    inst_data_t instructions[MAX_CODE_SEGMENT_SIZE];
+    /** Number of instructions in code segment. */
+    int instruction_count;
+    /** Symbol table. */
+    struct symtable *symtable;
 } shared_t;
 
 /**

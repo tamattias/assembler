@@ -11,9 +11,24 @@
 #include "symtable.h"
 #include "instset.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+
+/**
+ * An entry point in the machine code.
+ */
+typedef struct entrypoint {
+    /** Symbol name. */
+    char label[MAX_LABEL_LENGTH + 1];
+    /** Base address. */
+    word_t base_addr;
+    /** Offset from base address. */
+    word_t offset;
+    /** Next item in list of entry points. */
+    struct entrypoint *next;
+} entrypoint_t;
 
 /**
  * Internal state for second pass.
@@ -28,7 +43,9 @@ typedef struct {
     /** Length of last read field. */
     int field_len;
     /** Index of next instruction to process. */
-    int instruction_index; 
+    int instruction_index;
+    /** Head of entry point linked list. */
+    entrypoint_t *entrypoints;
 } state_t;
 
 /**
@@ -106,6 +123,49 @@ static int complete_instruction(state_t *st, struct shared *shared, const inst_d
 }
 
 /**
+ * Insert a new entrypoint at the head of a linked list of entrypoints.
+ *
+ * @param head Pointer to head of entry point list (will be modified.)
+ * @param label Symbol name.
+ * @param base_addr Base address.
+ * @param offset Offset from base address.
+ */
+static void insert_entrypoint(entrypoint_t **head, const char *label, word_t base_addr, word_t offset)
+{
+    /* Allocate entry point. */
+    entrypoint_t *ep = (entrypoint_t*)malloc(sizeof(entrypoint_t));
+    
+    /* Copy label. */
+    strcpy(ep->label, label);
+
+    /* Set address. */
+    ep->base_addr = base_addr;
+    ep->offset = offset;
+
+    /* Set next to head. */
+    ep->next = *head;
+
+    /* Replace head with new entrypoint. */
+    *head = ep;
+}
+
+/**
+ * Free the linked list of entry points.
+ *
+ * @param head Head of linked list.
+ */
+static void free_entrypoints(entrypoint_t *head)
+{
+    entrypoint_t *cur, *next;
+
+    /* Traverse list, freeing each node. */
+    for (cur = head; cur; cur = next) {
+        next = cur->next;
+        free(cur);
+    }
+}
+
+/**
  * Process a line of expanded assembly code.
  *
  * @param st Internal state.
@@ -159,6 +219,9 @@ static int process_line(state_t *st, shared_t *shared, char *line)
         
         /* Mark as entry. */
         sym->ent = 1;
+
+        /* Insert to linked list of entry points. */
+        insert_entrypoint(&st->entrypoints, st->field, sym->base_addr, sym->offset);
     } else {
         /* Instruction statement. Fill in missing words. */
         if (complete_instruction(st, shared, &shared->instructions[st->instruction_index++]) != 0)
@@ -229,7 +292,52 @@ done:
     return error;
 }
 
-int secondpass(const char *infilename, const char *obfilename, struct shared *shared)
+/**
+ * Writes entry points to a .entries file.
+ *
+ * @param filename Output filename.
+ * @param entrypoints Linked list of entry points to write.
+ * @return Zero on success, non-zero on failure.
+ */
+static int write_entries_file(const char *filename, entrypoint_t *entrypoints)
+{
+    FILE *fp; /* Output file. */
+    entrypoint_t *cur; /* Currently traversed entry. */
+
+    /* Try to open the file. */
+    if ((fp = fopen(filename, "w")) == 0) {
+        printf("error: could not open entries file %s for writing\n", filename);
+        return 1;
+    }
+
+    /* Traverse linked list of entrypoints. */
+    for (cur = entrypoints; cur; cur = cur->next) {
+        /* Write entry to file. */
+        if (fprintf(fp, "%s,%ld,%ld\n", cur->label, (long)cur->base_addr, (long)cur->offset) < 0) {
+            /* Report error. */
+            printf("error: could not write entrypoint %s to entries file\n",
+                cur->label);
+
+            /* Close output file. */
+            fclose(fp);
+
+            return 1;
+        }
+    }
+
+    /* Close output file. */
+    fclose(fp);
+
+    return 0;
+}
+
+int secondpass(
+    const char *infilename,
+    const char *obfilename,
+    const char *entfilename,
+    const char *extfilename,
+    struct shared *shared
+)
 {
     FILE *in; /* Input file pointer. */
     char line[MAX_LINE_LENGTH + 1]; /* Line buffer. */
@@ -252,12 +360,16 @@ int secondpass(const char *infilename, const char *obfilename, struct shared *sh
     /* Close input file. */
     fclose(in);
 
-    /* Terminate early if an error was encountered. */
-    if (error)
-        return error;
+    if (error == 0 && st.entrypoints != 0) {
+        /* Write .ent file. */
+        write_entries_file(entfilename, st.entrypoints);
+
+        /* Free linked list of entry points. */
+        free_entrypoints(st.entrypoints);
+    }
 
     /* Write machine code to object file. */
-    if ((error = write_object_file(obfilename, shared)) != 0)
+    if (write_object_file(obfilename, shared) != 0)
         return error;
 
     return 0;

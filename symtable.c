@@ -22,7 +22,7 @@
 
 struct symtable {
     /** Backing hash table. */
-    hashtable_t *ht
+    hashtable_t *ht;
 };
 
 symtable_t *symtable_alloc()

@@ -15,9 +15,17 @@ struct shared;
  *
  * @param infilename Input filename (.am file).
  * @param obfilename Object filename (.ob)
+ * @param entfilename Entries filename (.ent)
+ * @param extfilename Externals filename (.ext)
  * @param shared Shared assembly state.
  * @return Zero on success, non-zero on failure.
  */
-int secondpass(const char *infilename, const char *obfilename, struct shared *shared);
+int secondpass(
+    const char *infilename,
+    const char *obfilename,
+    const char *entfilename,
+    const char *extfilename,
+    struct shared *shared
+);
 
 #endif

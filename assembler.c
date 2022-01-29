@@ -35,6 +35,8 @@ static int process_file(const char *basename)
     char as_filename[FILENAME_MAX + 1]; /* Source assembly file path (.as). */
     char am_filename[FILENAME_MAX + 1]; /* Macro expanded file path (.am). */
     char ob_filename[FILENAME_MAX + 1]; /* Object file path (.ob). */
+    char ent_filename[FILENAME_MAX + 1]; /* Entry points file path (.ent). */
+    char ext_filename[FILENAME_MAX + 1]; /* Externals file path (.ext). */
     shared_t *shared; /* Shared assembly state. */
 
     /* Set input filename to basename with .as extension. */
@@ -66,8 +68,16 @@ static int process_file(const char *basename)
     strcpy(ob_filename, basename);
     strcat(ob_filename, ".ob");
 
+    /* Set entry points file path by appending .ent. */
+    strcpy(ent_filename, basename);
+    strcat(ent_filename, ".ent");
+
+    /* Set externals file path by appending .ext. */
+    strcpy(ext_filename, basename);
+    strcat(ext_filename, ".ext");
+
     /* Run second pass. */
-    if (secondpass(am_filename, ob_filename, shared)) {
+    if (secondpass(am_filename, ob_filename, ent_filename, ext_filename, shared)) {
         printf("fatal error: second pass failed.\n");
         shared_free(shared);
         return 1;
