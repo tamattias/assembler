@@ -36,8 +36,6 @@ typedef struct datasym {
 typedef struct {
     /** Instruction counter. */
     int ic;
-    /** Data counter. */
-    int dc;
     /** Current line number. */
     int line_no;
     /** Pointer to next character to process. */
@@ -288,7 +286,7 @@ static int process_data_directive(state_t *st, shared_t *shared)
     /* Read comma separated integer values into data segment. */
     len = read_comma_separated_data(
         st->line_head,
-        shared->data_seg + st->dc,
+        shared->data_seg + shared->data_seg_len,
         MAX_DATA_LENGTH);
 
     /* Check if bad data. */
@@ -308,15 +306,15 @@ static int process_data_directive(state_t *st, shared_t *shared)
         sym = symtable_new(shared->symtable, st->label);
         assert(sym);
         sym->data = 1;
-        sym->base_addr = SYMBOL_BASE_ADDR(st->dc);
-        sym->offset = SYMBOL_OFFSET(st->dc);
+        sym->base_addr = SYMBOL_BASE_ADDR(shared->data_seg_len);
+        sym->offset = SYMBOL_OFFSET(shared->data_seg_len);
 
         /* Insert to linked list of data symbols. */
         insert_data_symbol(&st->data_symbols, sym);
     }
 
-    /* Increment data counter. */
-    st->dc += len;
+    /* Increment data segment size by the amount of words added. */
+    shared->data_seg_len += len;
 
     return 0;
 }
@@ -330,7 +328,7 @@ static int process_data_directive(state_t *st, shared_t *shared)
 static int process_string_directive(state_t *st, shared_t *shared)
 {
     char c; /* Last read string directive character. */
-    const int addr = st->dc; /* Address of string. */
+    const int addr = shared->data_seg_len; /* Address of string. */
     symbol_t *sym; /* Symbol. */
 
     /* Skip whitespace. */
@@ -352,10 +350,10 @@ static int process_string_directive(state_t *st, shared_t *shared)
         return 1;
     }
 
-    /* Copy string into data segment, incrementing the data counter for
+    /* Copy string into data segment, incrementing the data segment length for
        every character (word) written. */
     while ((c = *st->line_head++) != '\0' && c != '"')
-        shared->data_seg[st->dc++] = c;
+        shared->data_seg[shared->data_seg_len++] = c;
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
@@ -364,7 +362,7 @@ static int process_string_directive(state_t *st, shared_t *shared)
     }
 
     /* Append null terminator. */
-    shared->data_seg[st->dc++] = '\0';
+    shared->data_seg[shared->data_seg_len++] = '\0';
 
     /* Add symbol if labeled. */
     if (st->labeled) {
@@ -608,20 +606,23 @@ static void write_extra_words(state_t *st, shared_t *shared, const operand_t *op
     switch (op->addr_mode) {
     case ADDR_MODE_IMMEDIATE: 
         /* Write extra word containing the immediate value with A flag set. */
-        shared->code_seg[st->ic++] = MAKE_EXTRA_INST_WORD(
+        shared->code_seg[shared->code_seg_len++] = MAKE_EXTRA_INST_WORD(
             op->value.immediate, /* Value */
             0, /* E flag */
             0, /* R flag */
             1  /* A flag */
         );
+        ++st->ic; /* Increment instruction counter. */
         break;
     case ADDR_MODE_DIRECT:
         /* Preserve space for two extra words, filled later in second pass. */
         st->ic += 2;
+        shared->code_seg_len += 2;
         break;
     case ADDR_MODE_INDEX:
         /* Preserve space for two extra words, filled later in second pass. */
         st->ic += 2;
+        shared->code_seg_len += 2;
         break;
     case ADDR_MODE_REGISTER_DIRECT:
         /* No extra words needed, register stored in second word. */
@@ -673,12 +674,13 @@ static int process_instruction(state_t *st, shared_t *shared)
     data->ic = st->ic;
 
     /* Write first word (opcode). */
-    shared->code_seg[st->ic++] = MAKE_FIRST_INST_WORD(
+    shared->code_seg[shared->code_seg_len++] = MAKE_FIRST_INST_WORD(
         INST_OPCODE(desc->instruction), /* Opcode */
         0, /* E flag */
         0, /* R flag */
         1  /* A flag */
     );
+    ++st->ic; /* Increment instruction counter. */
 
     if (nops > 0) {
         for (i = 0; i < nops; ++i) {
@@ -737,7 +739,7 @@ static int process_instruction(state_t *st, shared_t *shared)
          * addressing mode and register number will be determined by the
          * second operand.
          */
-        shared->code_seg[st->ic++] = MAKE_SECOND_INST_WORD(
+        shared->code_seg[shared->code_seg_len++] = MAKE_SECOND_INST_WORD(
             nops == 1 ? addr_mode_to_index(ops[0].addr_mode) : addr_mode_to_index(ops[1].addr_mode), /* dst addr mode */
             dst_reg, /* dst register */
             nops == 2 ? addr_mode_to_index(ops[0].addr_mode) : 0, /* src addr mode */
@@ -747,6 +749,7 @@ static int process_instruction(state_t *st, shared_t *shared)
             0, /* R flag */
             1  /* A flag */
         );
+        ++st->ic; /* Increment instruction counter. */
 
         /* Write/preserve extra words for first operand. */
         write_extra_words(st, shared, &ops[0]);
@@ -886,10 +889,6 @@ int firstpass(const char *filename, struct shared *shared)
 
     /* Close input file. */
     fclose(in);
-
-    /* Save segment lengths. */
-    shared->code_seg_len = st.ic;
-    shared->data_seg_len = st.dc;
 
     /* Update data symbol addresses and free the list of data symbols. */
     update_data_symbols(st.data_symbols, st.ic);
