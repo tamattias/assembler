@@ -10,17 +10,17 @@
 /**
  * Make a complete instruction ID from opcode and function code.
  */
-#define MAKE_INST(opcode, funct) (((opcode) & 0xFFFF) | ((funct) << 16))
+#define MAKE_INST(opcode, funct) (((opcode) & 0xF) | ((funct) << 4))
 
 /**
  * Extracts opcode from instruction.
  */
-#define INST_OPCODE(inst) ((inst) & 0xFFFF) 
+#define INST_OPCODE(inst) ((inst) & 0xF) 
 
 /**
  * Extract function code from instruction.
  */
-#define INST_FUNCT(inst)  ((inst) >> 16)
+#define INST_FUNCT(inst)  ((inst) >> 4)
 
 #define INST_MOV  MAKE_INST(0, 0)
 #define INST_CMP  MAKE_INST(1, 0)
@@ -84,7 +84,7 @@
 /**
  * Instruction code.
  */
-typedef long inst_t;
+typedef unsigned char inst_t;
 
 /**
  * Data type used internally for representing a machine word.
