@@ -30,15 +30,15 @@ typedef struct {
  */
 typedef struct shared {
     /** Data segment. */
-    word_t data_seg[MAX_DATA_SEGMENT_SIZE];
+    word_t data_seg[MAX_DATA_SEGMENT_LEN];
     /** Length of data segment in words. */
     int data_seg_len;
     /** Machine code segment. */
-    word_t code_seg[MAX_CODE_SEGMENT_SIZE];
+    word_t code_seg[MAX_CODE_SEGMENT_LEN];
     /** Length of code segment in words. */
     int code_seg_len;
     /** Data about instructions in code segment. */
-    inst_data_t instructions[MAX_CODE_SEGMENT_SIZE];
+    inst_data_t instructions[MAX_CODE_SEGMENT_LEN];
     /** Number of instructions in code segment. */
     int instruction_count;
     /** Symbol table. */

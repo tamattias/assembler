@@ -20,11 +20,11 @@
 /**
  * Maximum size of data segment in words.
  */
-#define MAX_DATA_SEGMENT_SIZE 8192
+#define MAX_DATA_SEGMENT_LEN 8192
 
 /**
  * Maximum size of code segment in words.
  */
-#define MAX_CODE_SEGMENT_SIZE 8192
+#define MAX_CODE_SEGMENT_LEN 8192
 
 #endif

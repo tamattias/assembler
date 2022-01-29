@@ -18,8 +18,6 @@
 #include <ctype.h>
 #include <assert.h>
 
-/* TODO: Handle cases of segment overflow (data/instruction). */
-
 /**
  * Node in a linked list of data symbols.
  */
@@ -150,44 +148,6 @@ static int process_label_field(state_t *st, shared_t *shared)
 }
 
 /**
- * Parses a comma separated list of integer values passed to a data directive.
- * The integers are encoded as data words into the output buffer.
- *
- * @param input Pointer to a null terminated string containing a comma
- *              separated list of integers.
- * @param data Pointer to an array of words in which to store the read
- *             data.
- * @note Only the first MAX_LINE_LENGTH bytes of data will be scanned.
- * @return Number of written to data or -1 if invalid input.
- */
-static int parse_data_array(const char *input, word_t *data)
-{
-    char tmpstr[MAX_LINE_LENGTH + 1]; /* Copy of input for tokenization. */
-    char *tok; /* Current token. */
-    word_t nval; /* Integer parsed from current token. */
-    int count = 0; /* Tokens read successfully so far. */
-    
-    /* Make a copy of the input for tokenization. */
-    strncpy(tmpstr, input, MAX_LINE_LENGTH);
-
-    /* Begin tokenization. */
-    tok = strtok(tmpstr, ",");
-    while (tok) {
-        /* Read integer from token. */
-        if (parse_number(tok, &nval) != 0)
-            return -1; /* Not integer, abort. */
-
-        /* Encode data word and store in output array. */
-        data[count++] = MAKE_DATA_WORD(nval);
-
-        /* Get next token. */
-        tok = strtok(NULL, ",");
-    }
-    
-    return count;
-}
-
-/**
  * Inserts a symbol at the head of a linked list of data symbols.
  *
  * @param head Pointer to head node in list. Will be modified.
@@ -245,6 +205,49 @@ static void update_data_symbols(datasym_t *head, word_t offset)
 }
 
 /**
+ * Parses a comma separated list of integer values passed to a data directive.
+ * The integers are encoded as data words into the output buffer.
+ *
+ * @param input Pointer to a null terminated string containing a comma
+ *              separated list of integers.
+ * @param data Pointer to an array of words in which to store the read
+ *             data.
+ * @param max_len Maximum number of integers that can be read.
+ * @note Only the first MAX_LINE_LENGTH characters will be scanned.
+ * @return Number of written to data or -1 if invalid input or -2 if overflow.
+ */
+static int parse_data_array(const char *input, word_t *data, int max_len)
+{
+    char tmpstr[MAX_LINE_LENGTH + 1]; /* Copy of input for tokenization. */
+    char *tok; /* Current token. */
+    word_t nval; /* Integer parsed from current token. */
+    int count = 0; /* Tokens read successfully so far. */
+    
+    /* Make a copy of the input for tokenization. */
+    strncpy(tmpstr, input, MAX_LINE_LENGTH);
+
+    /* Begin tokenization. */
+    tok = strtok(tmpstr, ",");
+    while (tok) {
+        /* Read integer from token. */
+        if (parse_number(tok, &nval) != 0)
+            return -1; /* Not integer, abort. */
+
+        /* Prevent overflow. */
+        if (count >= max_len)
+            return -2;
+
+        /* Encode data word and store in output array. */
+        data[count++] = MAKE_DATA_WORD(nval);
+
+        /* Get next token. */
+        tok = strtok(NULL, ",");
+    }
+    
+    return count;
+}
+
+/**
  * Process data after a .data directive.
  *
  * @param st Internal state.
@@ -268,13 +271,22 @@ static int process_data_directive(state_t *st, shared_t *shared)
         print_error(st, "missing data after data directive.");
         return 1;
     }
-    
+
     /* Read comma separated integer values into data segment. */
-    len = parse_data_array(st->line_head, shared->data_seg + shared->data_seg_len);
+    len = parse_data_array(
+        st->line_head,
+        shared->data_seg + shared->data_seg_len,
+        MAX_DATA_SEGMENT_LEN - shared->data_seg_len);
 
     /* Check if bad data. */
     if (len == -1) {
         print_error(st, "invalid data after data directive.");
+        return 1;
+    }
+
+    /* Check if overflow. */
+    if (len == -2) {
+        print_error(st, "data overflow; no more room in data segment.");
         return 1;
     }
 
@@ -335,8 +347,16 @@ static int process_string_directive(state_t *st, shared_t *shared)
 
     /* Copy string into data segment, incrementing the data segment length for
        every character (word) written. */
-    while ((c = *st->line_head++) != '\0' && c != '"')
+    while ((c = *st->line_head++) != '\0' && c != '"') {
         shared->data_seg[shared->data_seg_len++] = MAKE_DATA_WORD(c);
+
+        /* Check if out of data segment space. We add 1 to cover the
+           null terminator. */
+        if ((shared->data_seg_len + 1) >= MAX_DATA_SEGMENT_LEN) {
+            print_error(st, "data overflow; no more room in data segment.");
+            return 1;
+        }
+    }
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
@@ -562,11 +582,18 @@ static int addr_mode_to_index(addr_mode_t addr_mode)
  * @param st Internal state.
  * @param shared Shared state.
  * @param op Operand for which to write/reserve extra words.
+ * @return Zero on success, non-zero if the words could not be written.
  */
-static void write_extra_words(state_t *st, shared_t *shared, const operand_t *op)
+static int write_extra_words(state_t *st, shared_t *shared, const operand_t *op)
 {
     switch (op->addr_mode) {
     case ADDR_MODE_IMMEDIATE: 
+        /* Check if there is room for another word. */
+        if (shared->code_seg_len >= MAX_CODE_SEGMENT_LEN) {
+            print_error(st, "code segment overflow.");
+            return 1;
+        }
+        
         /* Write extra word containing the immediate value with A flag set. */
         shared->code_seg[shared->code_seg_len++] = MAKE_EXTRA_INST_WORD(
             op->value.immediate, /* Value */
@@ -574,22 +601,43 @@ static void write_extra_words(state_t *st, shared_t *shared, const operand_t *op
             0, /* R flag */
             1  /* A flag */
         );
+
         ++st->ic; /* Increment instruction counter. */
+
         break;
+
     case ADDR_MODE_DIRECT:
+        /* Check if there is room for two more words. */
+        if ((shared->code_seg_len + 1) >= MAX_CODE_SEGMENT_LEN) {
+            print_error(st, "code segment overflow.");
+            return 1;
+        }
+
         /* Preserve space for two extra words, filled later in second pass. */
         st->ic += 2;
         shared->code_seg_len += 2;
+
         break;
+
     case ADDR_MODE_INDEX:
+        /* Check if there is room for two more words. */
+        if ((shared->code_seg_len + 1) >= MAX_CODE_SEGMENT_LEN) {
+            print_error(st, "code segment overflow.");
+            return 1;
+        }
+
         /* Preserve space for two extra words, filled later in second pass. */
         st->ic += 2;
         shared->code_seg_len += 2;
+
         break;
+
     case ADDR_MODE_REGISTER_DIRECT:
         /* No extra words needed, register stored in second word. */
         break;
     }
+
+    return 0;
 }
 
 /**
@@ -621,8 +669,15 @@ static int process_instruction(state_t *st, shared_t *shared)
     if ((nops = process_operands(st, ops)) < 0)
         return 1;
 
+    /* Check if incorrect number of operands. */
     if (desc->noperands != nops) {
         print_error(st, "incorrect number of operands (expected %d, got %d)", desc->noperands, nops);
+        return 1;
+    }
+
+    /* Check if we would overflow instruction list. */
+    if (shared->instruction_count >= MAX_CODE_SEGMENT_LEN) {
+        print_error(st, "too many instructions.");
         return 1;
     }
 
@@ -635,6 +690,12 @@ static int process_instruction(state_t *st, shared_t *shared)
     /* Store instruction address before incrementing IC. */
     data->address = st->ic;
 
+    /* Check if there is room for another word. */
+    if (shared->code_seg_len >= MAX_CODE_SEGMENT_LEN) {
+        print_error(st, "code segment overflow.");
+        return 1;
+    }
+
     /* Write first word (opcode). */
     shared->code_seg[shared->code_seg_len++] = MAKE_FIRST_INST_WORD(
         INST_OPCODE(desc->instruction), /* Opcode */
@@ -645,6 +706,12 @@ static int process_instruction(state_t *st, shared_t *shared)
     ++st->ic; /* Increment instruction counter. */
 
     if (nops > 0) {
+        /* Check if there is room for another word. */
+        if (shared->code_seg_len >= MAX_CODE_SEGMENT_LEN) {
+            print_error(st, "code segment overflow.");
+            return 1;
+        }
+
         for (i = 0; i < nops; ++i) {
             /* Check if the addressing mode used is legal by checking if its bit
                is set in the addressing modes bitfield of the description. */
@@ -714,11 +781,13 @@ static int process_instruction(state_t *st, shared_t *shared)
         ++st->ic; /* Increment instruction counter. */
 
         /* Write/preserve extra words for first operand. */
-        write_extra_words(st, shared, &ops[0]);
+        if (write_extra_words(st, shared, &ops[0]))
+            return 1; /* No room in code segment. */
 
         /* Write/preserve extra words for second operand if specified. */
         if (nops > 1)
-            write_extra_words(st, shared, &ops[1]);
+            if (write_extra_words(st, shared, &ops[1]))
+                return 1; /* No room in code segment. */
     }
 
     if (st->labeled) {
