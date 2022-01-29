@@ -91,20 +91,16 @@ int parse_number(const char *tok, word_t *w)
         *w *= 10;
         *w += c - '0';
     }
-    
-    /* Check if last character was not a digit. */
-    if (!is_eol(c))
-        return -1;
 
     /* Unread last non-digit character. */
     --tok;
 
-    /* Apply sign. */
-    *w *= sign;
-    
     /* Check if we have any extraneous characters. */
     if (!is_whitespace_string(tok))
         return -1;
+
+    /* Apply sign. */
+    *w *= sign;
 
     return 0;
 }

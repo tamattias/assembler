@@ -41,3 +41,11 @@ add r1 r2
 add #1 #2
 add r2 #1
 add #1 r2
+
+; Bad data
+.data 1, 2, 3, 4, hoedjevanpapier
+
+; Bad string
+.string 1, 2, 3, 4
+.string "unterminated
+

@@ -341,7 +341,7 @@ static int process_string_directive(state_t *st, shared_t *shared)
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
-        print_error(st, "string data missing closing quotes.");
+        print_error(st, "string data missing closing double quotes.");
         return 1;
     }
 
