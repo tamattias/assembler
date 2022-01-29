@@ -8,6 +8,9 @@
 
 #include <string.h>
 
+/**
+ * List of instructions.
+ */
 static const inst_desc_t instruction_set[] = {
     {"mov",  INST_MOV,  2, {ADDR_MODE_ALL, ADDR_MODE_ALL & ~ADDR_MODE_IMMEDIATE}},
     {"cmp",  INST_CMP,  2, {ADDR_MODE_ALL, ADDR_MODE_ALL}},
@@ -27,14 +30,21 @@ static const inst_desc_t instruction_set[] = {
     {"stop", INST_STOP, 0},
 };
 
+/**
+ * Total number of instructions in the instruction set.
+ */
 static const int instruction_set_size = sizeof(instruction_set) / sizeof(instruction_set[0]);
 
 const inst_desc_t *find_inst(const char *mne)
 {
     int i;
+
+    /* Find instruction with matching mnemonic and return pointer to 
+       its description. */
     for (i = 0; i < instruction_set_size; ++i) {
         if (strcmp(instruction_set[i].mne, mne) == 0)
             return &instruction_set[i];
     }
+
     return 0;
 }
