@@ -84,7 +84,7 @@
 /**
  * Instruction code.
  */
-typedef int inst_t;
+typedef long inst_t;
 
 /**
  * Data type used internally for representing a machine word.

@@ -19,8 +19,6 @@ struct symtable;
 typedef struct {
     /** Address in code segment. */
     int ic;
-    /** Number of words occupied by the instruction. */
-    int l;
     /** Symbol referenced by each operand (may be empty). */
     char operand_symbols[MAX_OPERANDS][MAX_LABEL_LENGTH + 1];
     /** Number of operands. */
