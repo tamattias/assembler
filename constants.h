@@ -28,13 +28,13 @@
 #define MAX_DATA_LENGTH 31
 
 /**
- * Maximum size of data image in words.
+ * Maximum size of data segment in words.
  */
-#define MAX_DATA_IMAGE_SIZE 8192
+#define MAX_DATA_SEGMENT_SIZE 8192
 
 /**
- * Maximum size of code image in words.
+ * Maximum size of code segment in words.
  */
-#define MAX_CODE_IMAGE_SIZE 8192
+#define MAX_CODE_SEGMENT_SIZE 8192
 
 #endif

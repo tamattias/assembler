@@ -17,29 +17,66 @@
 #include <ctype.h>
 #include <assert.h>
 
-/* TODO: Handle cases of memory image overflow (data/instruction). */
+/* TODO: Handle cases of segment overflow (data/instruction). */
 
 /**
- * First pass internal state.
+ * Internal state for first pass.
  */
 typedef struct {
-    int ic; /** Instruction counter. */
-    int dc; /** Data counter. */
-    int line_no; /** Current line number. */
-    char *line_head; /** Line head. */
-    int eol; /** End of line reached? */
-    char field[MAX_LINE_LENGTH + 1]; /** Current field. */
-    int field_len; /** Length of current field. */
-    int labeled; /** Is current line a label line? */
-    char label[MAX_LABEL_LENGTH + 1]; /** Current label. */
-    int label_len; /** Length of current label. */
-} firstpass_t;
+    /** Instruction counter. */
+    int ic;
+    /** Data counter. */
+    int dc;
+    /** Current line number. */
+    int line_no;
+    /** Pointer to next character to process. */
+    char *line_head;
+    /** Last read field. */
+    char field[MAX_LINE_LENGTH + 1];
+    /** Length of last read field. */
+    int field_len;
+    /** Is current line labeled? */
+    int labeled;
+    /** Label of current line. */
+    char label[MAX_LABEL_LENGTH + 1];
+    /** Length of label of current line. */
+    int label_len;
+} state_t;
 
-static void report_error(firstpass_t *fp, const char *fmt, ...)
+/**
+ * Parsed operand.
+ */
+typedef struct {
+    /** Addressing mode. */
+    addr_mode_t addr_mode;
+    /** Referenced label. */
+    char label[MAX_LABEL_LENGTH + 1];
+    /** Value. */
+    union {
+        /** Immediate value. */
+        word_t immediate;
+        /** Referenced register. */
+        word_t reg;
+    } value;
+} operand_t;
+
+/**
+ * Return values for parse_operand.
+ */
+typedef enum {
+    PARSE_OPERAND_OK,   /** Operand parsed successfully. */
+    PARSE_OPERAND_BAD,  /** Token was not a valid operand. */
+    PARSE_OPERAND_EMPTY /** Token was blank. */
+} parse_operand_result_t;
+
+/**
+ * Prints a nicely formatted error with line number.
+ */
+static void print_error(state_t *st, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    printf("error: line %d: ", fp->line_no);
+    printf("firstpass: error: line %d: ", st->line_no);
     vprintf(fmt, args);
     putchar('\n'); /* Newline at end. */
     va_end(args);
@@ -90,23 +127,32 @@ static int read_comma_separated_data(const char *input, word_t *data, int limit)
     return count;
 }
 
-static int process_label_field(firstpass_t *fp, shared_t *shared)
+/**
+ * Processes the first field of a labeled line.
+ *
+ * @param st Internal state.
+ * @param shared Shared state.
+ */
+static int process_label_field(state_t *st, shared_t *shared)
 {
     int bad = 0; /* Label badly formatted? */
-    const char *head = fp->field;
+    const char *head = st->field;
 
-    while ((fp->label[fp->label_len++] = *head++) != ':') {
+    /* Reset length to 0. */
+    st->label_len = 0;
+
+    while ((st->label[st->label_len++] = *head++) != ':') {
         /* Check if symbol too long. */
-        if (fp->label_len > MAX_LABEL_LENGTH) {
-            report_error(fp, "label is too long (%d chars, max. %d).", fp->label_len, MAX_LABEL_LENGTH);
+        if (st->label_len > MAX_LABEL_LENGTH) {
+            print_error(st, "label is too long (%d chars, max. %d).", st->label_len, MAX_LABEL_LENGTH);
             bad = 1; /* Flag symbol as bad. */
             break;
         }
 
         /* Check if alphanumeric. */
-        if (!isalnum(fp->label[fp->label_len - 1])) {
-            report_error(fp, "invalid character '%c' in label (only alphanumeric characters allowed)",
-                fp->label[fp->label_len - 1]);
+        if (!isalnum(st->label[st->label_len - 1])) {
+            print_error(st, "invalid character '%c' in label (only alphanumeric characters allowed)",
+                st->label[st->label_len - 1]);
             bad = 1; /* Flag symbol as bad. */
             break;
         }
@@ -116,13 +162,16 @@ static int process_label_field(firstpass_t *fp, shared_t *shared)
         return 1;
 
     /* Check if symbol empty. */
-    if (fp->label_len <= 0) {
-        report_error(fp, "label is empty.");
+    if (st->label_len <= 0) {
+        print_error(st, "label is empty.");
         return 1;
     }
 
-    if (symtable_find(shared->symtable, fp->label)) {
-        report_error(fp, "label %s already defined; ignoring statement.", fp->label);
+    /* Overwrite ':' with a null terminator. */
+    st->label[st->label_len - 1] = '\0';
+
+    if (symtable_find(shared->symtable, st->label)) {
+        print_error(st, "label %s already defined; ignoring statement.", st->label);
         return 1;
     }
 
@@ -131,125 +180,132 @@ static int process_label_field(firstpass_t *fp, shared_t *shared)
 
 /**
  * Reads the next field and sets the eol flag if end of line reached.
-
+ *
+ * @param st Internal state.
  * @return Non-zero if end of line, else zero.
  */
-static int get_next_field(firstpass_t *fp)
+static int get_next_field(state_t *st)
 {
-    read_field(&fp->line_head, fp->field, &fp->field_len);
-    return is_eol(*fp->line_head);
+    read_field(&st->line_head, st->field, &st->field_len);
+    return is_eol(*st->line_head);
 }
 
 /**
  * Process data after a .data directive.
+ *
+ * @param st Internal state.
+ * @param shared Shared state.
  */
-static int process_data_directive(firstpass_t *fp, shared_t *shared)
+static int process_data_directive(state_t *st, shared_t *shared)
 {
-    int data_len; /* Number of words read. */
+    char c; /* Current character. */
+    int len; /* Number of words read. */
     symbol_t *sym; /* Symbol. */
 
-    if (fp->eol) {
-        report_error(fp, "missing data after data directive.");
+    /* Skip whitespace. */
+    while ((c = *st->line_head++) != '\0' && isspace(c))
+        ;
+
+    /* Unread last character. */
+    --st->line_head;
+
+    /* If last character was end of line then no data is present. */
+    if (is_eol(c)) {
+        print_error(st, "missing data after data directive.");
         return 1;
     }
     
-    /* Read comma separated integer values into data image. */
-    data_len = read_comma_separated_data(
-        fp->line_head,
-        shared->data_image + fp->dc,
+    /* Read comma separated integer values into data segment. */
+    len = read_comma_separated_data(
+        st->line_head,
+        shared->data_seg + st->dc,
         MAX_DATA_LENGTH);
 
     /* Check if bad data. */
-    if (data_len == -1) {
-        report_error(fp, "invalid data after data directive.");
+    if (len == -1) {
+        print_error(st, "invalid data after data directive.");
         return 1;
     }
 
     /* Check if empty data. */
-    if (data_len == 0) {
-        report_error(fp, "no data after data directive.");
+    if (len == 0) {
+        print_error(st, "no data after data directive.");
         return 1;
     }
 
     /* Add symbol if labeled. */
-    if (fp->labeled) {
-        sym = symtable_new(shared->symtable, fp->label);
+    if (st->labeled) {
+        sym = symtable_new(shared->symtable, st->label);
         assert(sym);
         sym->data = 1;
-        sym->base_addr = SYMBOL_BASE_ADDR(fp->dc);
-        sym->offset = SYMBOL_OFFSET(fp->dc);
+        sym->base_addr = SYMBOL_BASE_ADDR(st->dc);
+        sym->offset = SYMBOL_OFFSET(st->dc);
     }
 
     /* Increment data counter. */
-    fp->dc += data_len;
+    st->dc += len;
 
     return 0;
 }
 
 /**
  * Process data after a .string directive.
+ *
+ * @param st Internal state.
+ * @param shared Shared state.
  */
-static int process_string_directive(firstpass_t *fp, shared_t *shared)
+static int process_string_directive(state_t *st, shared_t *shared)
 {
     char c; /* Last read string directive character. */
-    int len; /* Number of characters read. */
-
-    if (fp->eol) {
-        report_error(fp, "missing string data after string directive.");
-        return 1;
-    }
+    const int addr = st->dc; /* Address of string. */
+    symbol_t *sym; /* Symbol. */
 
     /* Skip whitespace. */
-    while ((c = *fp->line_head++) != '\0' && isspace(c))
+    while ((c = *st->line_head++) != '\0' && isspace(c))
         ;
+
+    /* Unread last character. */
+    --st->line_head;
 
     /* If last character was end of line then no data is present. */
     if (is_eol(c)) {
-        report_error(fp, "missing string data after string directive.");
+        print_error(st, "missing string data after string directive.");
         return 1;
     }
-
-    /* Unread last character. */
-    --fp->line_head;
 
     /* String needs to begin with double quotes. */
-    if (*fp->line_head++ != '"') {
-        report_error(fp, "string data missing opening double quotes.");
+    if (*st->line_head++ != '"') {
+        print_error(st, "string data missing opening double quotes.");
         return 1;
     }
 
-    len = 0;
-
-    /* Copy string into data image, incrementing the data counter for
+    /* Copy string into data segment, incrementing the data counter for
        every character (word) written. */
-    while ((c = *fp->line_head++) != '\0' && c != '"')
-        shared->data_image[fp->dc++] = c;
+    while ((c = *st->line_head++) != '\0' && c != '"')
+        shared->data_seg[st->dc++] = c;
 
     /* Check if string is improperly terminated. */
     if (c != '"') {
-        report_error(fp, "string data missing closing quotes.");
+        print_error(st, "string data missing closing quotes.");
         return 1;
     }
 
     /* Append null terminator. */
-    shared->data_image[fp->dc++] = '\0';
+    shared->data_seg[st->dc++] = '\0';
 
-    /* Increment data counter by string length plus null terminator length. */
-    fp->dc += len * sizeof(int) + 1;
+    /* Add symbol if labeled. */
+    if (st->labeled) {
+        sym = symtable_new(shared->symtable, st->label);
+        assert(sym);
+        sym->data = 1;
+        sym->base_addr = SYMBOL_BASE_ADDR(addr);
+        sym->offset = SYMBOL_OFFSET(addr);
+    }
 
     return 0;
 }
 
-/**
- * parse_operand return values.
- */
-typedef enum {
-    PARSE_OPERAND_OK,   /** Operand parsed successfully. */
-    PARSE_OPERAND_BAD,  /** Token was not a valid operand. */
-    PARSE_OPERAND_EMPTY /** Token was blank. */
-} parse_operand_result_t;
-
-static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, operand_t *op)
+static parse_operand_result_t parse_operand(state_t *st, const char *tok, operand_t *op)
 {
     char c; /* Current character. */
     int label_len; /* Label length. */
@@ -273,7 +329,7 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
 
         /* Parse immediate value. */
         if (parse_number(tok + 1, &op->value.immediate) != 0) {
-            report_error(fp, "could not parse immediate number in operand.");
+            print_error(st, "could not parse immediate number in operand.");
             return PARSE_OPERAND_BAD;
         }
 
@@ -297,7 +353,7 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
     while (!is_eol(c = *tok++) && isalnum(c)) {
         /* Check if label is too long. */
         if (label_len >= MAX_LABEL_LENGTH) {
-            report_error(fp, "label too long.");
+            print_error(st, "label too long.");
             return PARSE_OPERAND_BAD;
         }
 
@@ -312,7 +368,7 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
     if (is_eol(c)) {
         /* Check if empty label. */
         if (label_len == 0) {
-            report_error(fp, "label is empty.");
+            print_error(st, "label is empty.");
             return PARSE_OPERAND_BAD;
         }
 
@@ -321,13 +377,13 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
 
         /* Append null terminator. */
         op->label[label_len] = 0;
-           
+
         return PARSE_OPERAND_OK;
     }
 
     if (!isspace(c) && c != '[') {
         /* Found non-alphanumeric character in label. */
-        report_error(fp, "invalid label (non-alphanumeric character: \'%c\').\n", c);
+        print_error(st, "invalid label (non-alphanumeric character: \'%c\').\n", c);
         return PARSE_OPERAND_BAD;
     }
 
@@ -336,24 +392,27 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
         ;
     if (!is_eol(c) && c != '[') {
         /* Found extraneous character. */
-        report_error(fp, "direct addressing operand has extraneous characters.");
+        print_error(st, "direct addressing operand has extraneous characters.");
         return PARSE_OPERAND_BAD;
     }
 
     /* Unread last character. */
     --tok;
 
+    /* Null terminate label. */
+    op->label[label_len] = '\0';
+
     /* Check if we have a register subscript. */
     if (c == '[') {
         /* Read register index. */
         if (sscanf(tok, "[r%d]", &reg_id) != 1) {
-            report_error(fp, "could not read register value from brackets.");
+            print_error(st, "could not read register value from brackets.");
             return PARSE_OPERAND_BAD;
         }
 
         /* Check if offset register is valid. */
         if (reg_id < 0 || reg_id > 15) {
-            report_error(fp, "register value out of range: %d (must be between 0 and 15)\n", (int)op->value.reg);
+            print_error(st, "register value out of range: %d (must be between 0 and 15)\n", (int)op->value.reg);
             return PARSE_OPERAND_BAD;
         }
 
@@ -369,37 +428,36 @@ static parse_operand_result_t parse_operand(firstpass_t *fp, const char *tok, op
     /* Apply direct mode. */
     op->addr_mode = ADDR_MODE_DIRECT;
 
-    /* Null terminate label. */
-    op->label[label_len] = '\0';
-
     return PARSE_OPERAND_OK;
 }
 
 /**
  * Process operands beginning at the head pointer.
  *
+ * @param st Internal state.
+ * @param ops Output array of operands.
+ * @return Number of operands read or -1 on failure.
  * @note This destroys the line buffer so the line should not be
  *       accessed afterward.
- * @return Number of operands read or -1 on failure.
  */
-static int process_operands(firstpass_t *fp, operand_t ops[])
+static int process_operands(state_t *st, operand_t ops[])
 {
     char *tok; /* Token. */
     int nops = 0; /* Number of operands. */
     int parse_result; /* Result returned from parse_operand. */
 
     /* First token. */
-    tok = strtok(fp->line_head, ",");
+    tok = strtok(st->line_head, ",");
 
     while (tok) {
         /* Check if too many operands. */
         if (nops >= MAX_OPERANDS) {
-            report_error(fp, "too many operands.");
+            print_error(st, "too many operands.");
             return -1;
         }
 
         /* Parse operand from token. */
-        parse_result = parse_operand(fp, tok, &ops[nops]);
+        parse_result = parse_operand(st, tok, &ops[nops]);
         
         /* Check if invalid operand. */
         if (parse_result == PARSE_OPERAND_BAD)
@@ -441,89 +499,105 @@ static void debug_print_operand(operand_t *op)
 }
 #endif
 
-static int addr_mode_to_index(addr_mode_t addr_mode) {
+/**
+ * Converts an addressing mode to its machine code representation.
+ *
+ * @param addr_mode Internal addressing mode.
+ */
+static int addr_mode_to_index(addr_mode_t addr_mode)
+{
     switch (addr_mode) {
     case ADDR_MODE_IMMEDIATE:
         return 0;
-
     case ADDR_MODE_DIRECT:
         return 1;
-
     case ADDR_MODE_INDEX:
         return 2;
-
     case ADDR_MODE_REGISTER_DIRECT:
         return 3;
     }
     return 0;
 }
 
-static int write_extra_words(firstpass_t *fp, shared_t *shared, const operand_t *op)
+/**
+ * Writes or reserves extra words for an operand in a machine instruction.
+ * Some of the words are completed later in the second pass.
+ *
+ * @param st Internal state.
+ * @param shared Shared state.
+ * @param op Operand for which to write/reserve extra words.
+ */
+static void write_extra_words(state_t *st, shared_t *shared, const operand_t *op)
 {
     switch (op->addr_mode) {
     case ADDR_MODE_IMMEDIATE: 
         /* Write extra word containing the immediate value with A flag set. */
-        shared->code_image[fp->ic++] = MAKE_EXTRA_INST_WORD(
+        shared->code_seg[st->ic++] = MAKE_EXTRA_INST_WORD(
             op->value.immediate, /* Value */
             0, /* E flag */
             0, /* R flag */
             1  /* A flag */
         );
         break;
-    
     case ADDR_MODE_DIRECT:
         /* Preserve space for two extra words, filled later in second pass. */
-        fp->ic += 2;
+        st->ic += 2;
         break;
-
     case ADDR_MODE_INDEX:
         /* Preserve space for two extra words, filled later in second pass. */
-        fp->ic += 2;
+        st->ic += 2;
         break;
-
     case ADDR_MODE_REGISTER_DIRECT:
         /* No extra words needed, register stored in second word. */
         break;
     }
-    return 0;
 }
 
 /**
- * Process an instruction.
+ * Process an instruction statement.
+ *
+ * @param st Internal state.
+ * @param shared Shared state.
  */
-static int process_instruction(firstpass_t *fp, shared_t *shared)
+static int process_instruction(state_t *st, shared_t *shared)
 {
     const inst_desc_t *desc; /* Instruction code. */
     operand_t ops[MAX_OPERANDS]; /* Operands. */
     int nops; /* Number of operands. */
     symbol_t *sym; /* Symbol. */
-    word_t addr; /* Address of instruction. */
+    inst_data_t *data; /* Pointer to data object in shared state for use by second pass. */
     int i; /* Counter. */
     int src_reg, dst_reg; /* Source and destination register numbers for encoding second instruction. */
     
     /* Look up instruction name by mnemonic. */
-    desc = find_inst(fp->field);
+    desc = find_inst(st->field);
 
     /* No such mnemonic. */
     if (!desc) {
-        report_error(fp, "bad instruction mnemonic: %s", fp->field);
+        print_error(st, "bad instruction mnemonic: %s", st->field);
         return 1;
     }
 
     /* Parse operands. */
-    if ((nops = process_operands(fp, ops)) < 0)
+    if ((nops = process_operands(st, ops)) < 0)
         return 1;
 
     if (desc->noperands != nops) {
-        report_error(fp, "incorrect number of operands (expected %d, got %d)", desc->noperands, nops);
+        print_error(st, "incorrect number of operands (expected %d, got %d)", desc->noperands, nops);
         return 1;
     }
 
+    /* Get data pointer and increment instruction count. */
+    data = &shared->instructions[shared->instruction_count++];
+    
+    /* Store number of operands. */
+    data->num_operands = desc->noperands;
+
     /* Store instruction address before incrementing IC. */
-    addr = fp->ic;
+    data->ic = st->ic;
 
     /* Write first word (opcode). */
-    shared->code_image[fp->ic++] = MAKE_FIRST_INST_WORD(
+    shared->code_seg[st->ic++] = MAKE_FIRST_INST_WORD(
         INST_OPCODE(desc->instruction), /* Opcode */
         0, /* E flag */
         0, /* R flag */
@@ -533,10 +607,19 @@ static int process_instruction(firstpass_t *fp, shared_t *shared)
     if (nops > 0) {
         for (i = 0; i < nops; ++i) {
             /* Check if the addressing mode used is legal by checking if its bit
-            is set in the addressing modes bitfield of the description. */
+               is set in the addressing modes bitfield of the description. */
             if (!(desc->addr_modes[i] & ops[i].addr_mode)) {
-                report_error(fp, "operand %d has invalid addressing mode.", i + 1);
+                print_error(st, "operand %d has invalid addressing mode.", i + 1);
                 return 1;
+            }
+    
+            if (ops[i].addr_mode & (ADDR_MODE_DIRECT | ADDR_MODE_INDEX)) {
+                /* Store referenced label. */
+                strcpy(data->operand_symbols[i], ops[i].label);
+            } else {
+                /* Other modes don't reference a label so set to empty
+                   string. */
+                data->operand_symbols[i][0] = 0;
             }
         }
 
@@ -578,7 +661,7 @@ static int process_instruction(firstpass_t *fp, shared_t *shared)
          * addressing mode and register number will be determined by the
          * second operand.
          */
-        shared->code_image[fp->ic++] = MAKE_SECOND_INST_WORD(
+        shared->code_seg[st->ic++] = MAKE_SECOND_INST_WORD(
             nops == 1 ? addr_mode_to_index(ops[0].addr_mode) : addr_mode_to_index(ops[1].addr_mode), /* dst addr mode */
             dst_reg, /* dst register */
             nops == 2 ? addr_mode_to_index(ops[0].addr_mode) : 0, /* src addr mode */
@@ -590,95 +673,113 @@ static int process_instruction(firstpass_t *fp, shared_t *shared)
         );
 
         /* Write/preserve extra words for first operand. */
-        write_extra_words(fp, shared, &ops[0]);
+        write_extra_words(st, shared, &ops[0]);
 
         /* Write/preserve extra words for second operand if specified. */
         if (nops > 1)
-            write_extra_words(fp, shared, &ops[1]);
+            write_extra_words(st, shared, &ops[1]);
     }
 
-     if (fp->labeled) {
+    if (st->labeled) {
         /* Make a symbol for the instruction. */
-        sym = symtable_new(shared->symtable, fp->label);
+        sym = symtable_new(shared->symtable, st->label);
         assert(sym);
         sym->code = 1;
-        sym->base_addr = SYMBOL_BASE_ADDR(addr);
-        sym->offset = SYMBOL_OFFSET(addr);
+        sym->base_addr = SYMBOL_BASE_ADDR(data->ic);
+        sym->offset = SYMBOL_OFFSET(data->ic);
     }
 
     return 0;
 }
 
-static int process_line(firstpass_t *fp, char *line, shared_t *shared)
+/**
+ * Process a line of expanded assembly code.
+ *
+ * @param st Internal state.
+ * @param shared Shared state.
+ * @param line Line to process.
+ * @return Zero on success, non-zero on failure.
+ */
+static int process_line(state_t *st, shared_t *shared, char *line)
 {
     symbol_t *sym;
 
     /* Increment line counter. */
-    ++fp->line_no;
+    ++st->line_no;
 
-    /* Initialize head to beginning of line. */
-    fp->line_head = line;
+    /* Reset line head to beginning of line. */
+    st->line_head = line;
 
     /* First field. */
-    if (get_next_field(fp) != 0)
+    if (get_next_field(st) != 0)
         return 0; /* Skip empty line. */
 
     /* Handle comment lines. */
-    if (fp->field[0] == ';')
+    if (st->field[0] == ';')
         return 0; /* Skip comment line. */
 
     /* Check if first field is a label. */
-    if (fp->field[fp->field_len - 1] == ':') {
+    if (st->field[st->field_len - 1] == ':') {
         /* Try to read as label. */
-        if (process_label_field(fp, shared) != 0)
+        if (process_label_field(st, shared) != 0)
             return 1;
 
         /* Labeled. */
-        fp->labeled = 1;
+        st->labeled = 1;
 
         /* Next field. */
-        if (get_next_field(fp) != 0)
-            return 0;
+        if (get_next_field(st) != 0)
+            return 0; /* Line has no directives/instructions. */
     } else {
         /* Not labeled. */
-        fp->labeled = 0;
+        st->labeled = 0;
     }
 
-    if (fp->field[0] == '.') {
+    if (st->field[0] == '.') {
         /* Process directives. */
-        if (strcmp(fp->field + 1, "data") == 0) {
+        if (strcmp(st->field + 1, "data") == 0) {
             /* Data directive. */
-            if (process_data_directive(fp, shared))
+            if (process_data_directive(st, shared))
                 return 1;
-        } else if (strcmp(fp->field + 1, "string") == 0) {
+        } else if (strcmp(st->field + 1, "string") == 0) {
             /* String directive. */
-            if (process_string_directive(fp, shared))
+            if (process_string_directive(st, shared))
                 return 1;
-        } else if (strcmp(fp->field + 1, "extern") == 0) {
+        } else if (strcmp(st->field + 1, "extern") == 0) {
+            /* Read label. */
+            get_next_field(st); /* We don't care about end of line. */
+
+            /* Check if label is missing. */
+            if (st->field[0] == '\0') {
+                print_error(st, ".extern directive missing label reference.");
+                return 1;
+            }
+
             /* Insert a symbol with external flag  and address and offset
-               set to zero. */
-            sym = symtable_new(shared->symtable, fp->label);
+            set to zero. */
+            sym = symtable_new(shared->symtable, st->field);
             assert(sym);
             sym->ext = 1;
             sym->base_addr = 0;
             sym->offset = 0;
-        } else if (strcmp(fp->field + 1, "entry") == 0) {
+        } else if (strcmp(st->field + 1, "entry") == 0) {
             /* Entry directives ignored in first pass. */
         } 
-    } else if (!fp->eol) {
-        /* Not a directive, expect instruction. */
-        if (process_instruction(fp, shared) != 0)
+    } else if (!is_eol(st->field[0])) {
+        /* Not a directive yet field is not empty so must be a
+           instruction. */
+        if (process_instruction(st, shared) != 0)
             return 1;
     } else {
         /* End of line after first field, must be empty label. */
-        assert(fp->labeled);
+        assert(st->labeled);
 
         /* Try to allocate a symbol. */
-        sym = symtable_new(shared->symtable, fp->label);
+        sym = symtable_new(shared->symtable, st->label);
         assert(sym);
         sym->code = 1;
-        sym->base_addr = SYMBOL_BASE_ADDR(fp->ic);
-        sym->offset = SYMBOL_OFFSET(fp->ic);
+        sym->base_addr = SYMBOL_BASE_ADDR(st->ic);
+        sym->offset = SYMBOL_OFFSET(st->ic);
     }
 
     return 0;
@@ -688,7 +789,7 @@ int firstpass(const char *filename, struct shared *shared)
 {
     FILE *in; /* Input file pointer. */
     char line[MAX_LINE_LENGTH + 1]; /* Line buffer. */
-    firstpass_t fp; /* Internal state. */
+    state_t st; /* Internal state. */
     int error = 0; /* Error flag. */
 
     /* Try to open input file. */
@@ -698,18 +799,18 @@ int firstpass(const char *filename, struct shared *shared)
     }
 
     /* Zero initialize internal state. */
-    memset(&fp, 0, sizeof(fp));
+    memset(&st, 0, sizeof(st));
 
     /* Process file line by line. */
     while (fgets(line, sizeof(line), in))
-        error |= process_line(&fp, line, shared);
+        error |= process_line(&st, shared, line);
 
     /* Close input file. */
     fclose(in);
 
-    /* Save memory image length. */
-    shared->code_image_len = fp.ic;
-    shared->data_image_len = fp.dc;
+    /* Save segment lengths. */
+    shared->code_seg_len = st.ic;
+    shared->data_seg_len = st.dc;
 
     return error;
 }

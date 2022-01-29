@@ -11,7 +11,7 @@
 #include "instruction.h"
 
 /**
- * Computes the base address of a symbol.
+ * Computes the base address for a symbol from an address.
  *
  * @details The base address of a symbol is the nearest multiple of 16 smaller
  *          than its address. We perform floor division (since addr is always)
@@ -21,22 +21,31 @@
 #define SYMBOL_BASE_ADDR(addr) (((addr) / 16) * 16)
 
 /**
- * Computes a symbol offset from its address.
+ * Computes an offset from a base address for a symbol from an address.
  *
  * @details The remainder of division by 16 is the offset from the base
  *          address.
  */
-#define SYMBOL_OFFSET(addr)    ((addr) % 16)
+#define SYMBOL_OFFSET(addr) ((addr) % 16)
 
+/**
+ * A symbol in the symbol table.
+ */
 typedef struct {
-    char name[MAX_LABEL_LENGTH + 1]; /** Label. */
-    word_t value; /** Value. */
-    word_t base_addr; /** Base address. */
-    word_t offset;    /** Offset from base address in memory. */
-    int ext; /** External flag. */
-    int ent; /** Entry flag. */
-    int code; /** Code flag. */
-    int data; /** Data flag. */
+    /** Label. */
+    char name[MAX_LABEL_LENGTH + 1];
+    /** Base address. */
+    word_t base_addr;
+    /** Offset from base address in memory. */
+    word_t offset;
+    /** External flag. */
+    int ext;
+    /** Entry flag. */
+    int ent;
+    /** Code flag. */
+    int code;
+    /** Data flag. */
+    int data;
 } symbol_t;
 
 typedef struct symtable symtable_t;

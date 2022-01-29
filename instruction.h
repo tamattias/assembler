@@ -24,7 +24,6 @@
  */
 #define INST_FUNCT(inst)  ((inst) >> 16)
 
-#define INST_BAD (-1) /** Bad instruction. */
 #define INST_MOV  MAKE_INST(0, 0)
 #define INST_CMP  MAKE_INST(1, 0)
 #define INST_ADD  MAKE_INST(2, 10)
@@ -105,30 +104,21 @@ typedef enum {
     ADDR_MODE_REGISTER_DIRECT = (1 << 3)
 } addr_mode_t;
 
-
 #define ADDR_MODE_ALL (ADDR_MODE_IMMEDIATE | ADDR_MODE_DIRECT | ADDR_MODE_INDEX | ADDR_MODE_REGISTER_DIRECT)
 
 /**
  * Describes the structure of a valid instruction.
  */
 typedef struct {
-    const char *mne; /**< Mnemonic. */
-    const inst_t instruction; /**< Instruction code. */
-    int noperands; /**< Number of operands. */
-    int addr_modes[MAX_OPERANDS]; /**< Legal address modes for each operand (bitfield of ADDR_MODE_*). */
+    /** Mnemonic. */
+    const char *mne;
+    /** Instruction code. */
+    const inst_t instruction;
+    /** Number of operands. */
+    int noperands;
+    /** Legal addressing modes for each operand (bitfield of ADDR_MODE_*). */
+    int addr_modes[MAX_OPERANDS];
 } inst_desc_t;
-
-/**
- * Operand.
- */
-typedef struct {
-    addr_mode_t addr_mode;
-    char label[MAX_LABEL_LENGTH];
-    union {
-        word_t immediate;
-        word_t reg;
-    } value;
-} operand_t;
 
 /**
  * Finds the description of an instruction by its mnemonic.

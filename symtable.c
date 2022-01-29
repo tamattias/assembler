@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 /**
  * Number of slots in hash table. Chosen arbitrarily.
@@ -41,6 +42,9 @@ symbol_t *symtable_new(symtable_t *table, const char *label)
     
     /* Copy label. */
     strcpy(sym->name, label);
+
+    /* Don't insert empty symbols. */
+    assert(label[0] != 0);
 
     /* Insert into hash table. */
     hashtable_insert(table->ht, label, sym);

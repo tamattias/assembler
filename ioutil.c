@@ -25,8 +25,11 @@ void read_field(char **line, char *field, int *plen)
     /* Unread non-whitespace or EOL character. */
     --(*line);
 
-    if (is_eol(c))
+    /* Check if empty field. */
+    if (is_eol(c)) {
+        field[0] = '\0';
         return;
+    }
 
     /* Initialize length to 0. */
     if (plen)
@@ -45,7 +48,7 @@ void read_field(char **line, char *field, int *plen)
     --(*line);
 
     /* Add null terminator to field. */
-    field[0] = 0;
+    field[0] = '\0';
 }
 
 int parse_number(const char *tok, word_t *w)

@@ -7,6 +7,7 @@
 #include "preprocessor.h"
 #include "shared.h"
 #include "firstpass.h"
+#include "secondpass.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -51,12 +52,12 @@ static int process_file(const char *basename)
     }
 
     /* Allocate shared assembly state. We don't keep this on the stack because
-       the memory image is quite large. */
+       the code segments are quite large. */
     shared = shared_alloc();
 
     /* Run first pass. */
     if (firstpass(am_filename, shared)) {
-        printf("error: first pass failed, aborting.\n");
+        printf("fatal error: first pass failed.\n");
         shared_free(shared);
         return 1;
     }
@@ -67,6 +68,7 @@ static int process_file(const char *basename)
 
     /* Run second pass. */
     if (secondpass(am_filename, ob_filename, shared)) {
+        printf("fatal error: second pass failed.\n");
         shared_free(shared);
         return 1;
     }
