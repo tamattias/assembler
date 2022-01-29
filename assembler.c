@@ -19,7 +19,7 @@
 void print_usage()
 {
     puts("usage: assembler <basename> [...basename]");
-    puts("example: assembler test/ps test/data");
+    puts("example: assembler file1 file2 file3");
 }
 
 /**
