@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    /* Process all file basenames in the second argument onward and note when 
-       a file fails to process for the exit code. */
+    /* Assemble all assembly files with basenames given in the argument
+       list. */
     while (*++argv)
         error |= assemble(*argv);
 
