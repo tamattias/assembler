@@ -4,8 +4,8 @@
  * @brief Instruction set declarations.
  */
 
-#ifndef INSTRUCTION_H
-#define INSTRUCTION_H
+#ifndef INSTSET_H
+#define INSTSET_H
 
 /**
  * Make a complete instruction ID from opcode and function code.
