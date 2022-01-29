@@ -9,5 +9,8 @@ hello
 hello
 hello
 
+; Number at end of line.
+prn #42
+
 ; Instruction without operands
 stop
