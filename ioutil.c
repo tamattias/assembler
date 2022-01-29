@@ -7,7 +7,6 @@
 
 #include <ctype.h>
 #include <string.h>
-#include <stdio.h>
 
 int is_eol(char c)
 {
@@ -61,11 +60,8 @@ int parse_number(const char *tok, word_t *w)
         ;
     
     /* Check if empty string. */
-    if (is_eol(c)) {
-        printf("parse_number: empty string.\n");
+    if (is_eol(c))
         return 1;
-    }
-
 
     /* Check if number sign. */
     if (c == '+' || c == '-') {
@@ -93,10 +89,8 @@ int parse_number(const char *tok, word_t *w)
     /* Check if we have any extraneous characters. */
     while (!is_eol(c = *tok++) && isspace(c))
         ;
-    if (!is_eol(c)) {
-        printf("parse_number: extraneous character: %c.\n", c);
-        return -1; /* Got extraneous characters. TODO: Indicate in return value? */
-    }
+    if (!is_eol(c))
+        return -1; /* Got extraneous characters. */
 
     return 0;
 }
