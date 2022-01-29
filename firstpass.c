@@ -94,6 +94,16 @@ static void print_error(state_t *st, const char *fmt, ...)
 }
 
 /**
+ * Parses next field in line.
+ *
+ * @param st Internal state.
+ */
+static void next_field(state_t *st)
+{
+    read_field(&st->line_head, st->field, &st->field_len);
+}
+
+/**
  * Processes the first field of a labeled line.
  *
  * @param st Internal state.
@@ -137,16 +147,6 @@ static int process_label_field(state_t *st, shared_t *shared)
     }
 
     return 0;
-}
-
-/**
- * Parses next field in line.
- *
- * @param st Internal state.
- */
-static void next_field(state_t *st)
-{
-    read_field(&st->line_head, st->field, &st->field_len);
 }
 
 /**
